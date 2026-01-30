@@ -1,0 +1,72 @@
+{% extends 'layout.html' %}
+
+{% block content %}
+    <div class="container">
+        <h2 class="page-title">Доступные дисциплины по выбору</h2>
+
+        <div class="user-info">
+            <p><strong>ФИО:</strong> {{ user.fio }}</p>
+            <p><strong>Группа:</strong> {{ user.group_number }}</p>
+            <p><strong>Курс:</strong> {{ user.group_number[2] }}</p>
+        </div>
+
+        <div class="status">
+            {% if is_enrollment_open %}
+                <p class="status open">Запись на дисциплины открыта</p>
+            {% else %}
+                <p class="status closed">Запись на дисциплины закрыта</p>
+            {% endif %}
+        </div>
+
+        {% if chosen_courses %}
+            <div class="chosen-courses">
+                <h3>Вы уже выбрали следующие дисциплины:</h3>
+                <ul>
+                    {% for course in chosen_courses %}
+                        <li>{{ course.name }} (Семестр {{ course.semester }})</li>
+                    {% endfor %}
+                </ul>
+            </div>
+            <hr>
+        {% endif %}
+
+        <form method="POST">
+            {% if not is_enrollment_open %}
+                <p>Вы не можете выбрать дисциплину, так как запись закрыта.</p>
+            {% else %}
+                {% if not has_chosen_courses %}
+                    {% for idx, pair in course_pairs %}
+                        <fieldset class="course-pair">
+                            <legend>Выберите одну дисциплину из пары:</legend>
+                            {% for course in pair %}
+                                <label>
+                                    <input type="radio" name="pair_{{ idx }}" value="{{ course.id }}"
+                                        {% if course.id in chosen_course_ids %}checked{% endif %}>
+                                    {{ course.name }} (Семестр {{ course.semester }})
+                                </label><br>
+                            {% endfor %}
+                        </fieldset>
+                        <br>
+                    {% endfor %}
+                    <div class="button-row">
+                        <button type="submit">Сохранить выбор</button>
+                    </div>
+                {% else %}
+                    <p>Вы уже сделали свой выбор. Для изменения выбора нажмите кнопку "Отменить выбор".</p>
+                {% endif %}
+            {% endif %}
+        </form>
+
+        {% if is_enrollment_open and has_chosen_courses %}
+            <form action="{{ url_for('student_courses.cancel_enrollment') }}" method="POST">
+                <div class="button-row">
+                    <button type="submit">Отменить выбор</button>
+                </div>
+            </form>
+        {% endif %}
+
+        <div class="logout-section">
+            <a href="{{ url_for('logout') }}" class="logout-link">Выйти</a>
+        </div>
+    </div>
+{% endblock %}

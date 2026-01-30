@@ -1,0 +1,1 @@
+(do (clojure.core/ns webd.servlet (:gen-class :extends javax.servlet.http.HttpServlet)) (def service-method) (clojure.core/defn -service [servlet__11842__auto__ request__11843__auto__ response__11844__auto__] (service-method servlet__11842__auto__ request__11843__auto__ response__11844__auto__)))

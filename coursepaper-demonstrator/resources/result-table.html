@@ -1,0 +1,87 @@
+<table class="webd_result_table">
+	<caption class="webd_rt_caption">{{caption|safe}}</caption>
+	<tr class="webd_rt_head">
+		<th class="webd_rt_head_cell webd_rt_num_cell">
+			№
+		</th>
+		<th class="webd_rt_head_cell webd_rt_title_cell">
+			Название работы
+		</th>
+		<th class="webd_rt_head_cell webd_rt_name_cell">
+			Ф.И.О. студента
+		</th>
+        {% if admin? %}
+        <th class="webd_rt_head_cell webd_rt_name_cell">
+            Логин
+        </th>
+        {% endif %}
+		<th class="webd_rt_head_cell webd_rt_adviser_cell">
+			Ф.И.О. руководителя
+		</th>
+		<!--th class="webd_rt_head_cell webd_rt_intrep_cell">
+			Пр. отчет
+		</th>
+		<th class="webd_rt_head_cell webd_rt_intsl_cell">
+			Пр. ЭП
+		</th>
+		<th class="webd_rt_head_cell webd_rt_rep_cell">
+			Oтчет
+		</th>
+		<th class="webd_rt_head_cell webd_rt_sl_cell">
+			ЭП
+		</th-->
+        {% for f in files %}
+        <th class="webd_rt_head_cell webd_rt_sl_cell">
+            {{f.name|safe}}
+        </th>
+        {% endfor %}
+	</tr>
+    {% for s in students %}
+    <tr class="webd_rt_row">
+        <td class="webd_rt_cell webd_rt_num_cell">{{s.index}}</td>
+        <td class="webd_rt_cell webd_rt_title_cell">{{s.title}}</td>
+        <td class="webd_rt_cell webd_rt_name_cell" title="{{s.logins}}">{{s.name}}</td>
+        {% if admin? %}
+        <td class="webd_rt_cell webd_rt_name_cell" title="{{s.logins}}">{{s.logins}}</td>
+        {% endif %}
+        <td class="webd_rt_cell webd_rt_adviser_cell">{{s.adviser-name-formatted}}</td>
+        {% for f in s.sfiles %}
+        <td class="webd_rt_cell webd_rt_intsl_cell {% if f.file %}
+                                                        {%if f.file.in-time%}webd_rt_has_file_in_time{%else%}webd_rt_has_file{%endif%}
+                                                    {%else%}webd_rt_no_file{%endif%}">
+            {% if f.file %}
+            <a target="_blank" href="{{f.file.link}}"><img alt="PDF" src="pdf_icon.png"/></a>
+            {%endif%}
+        </td>
+        {% endfor %}
+        <!--td class="webd_rt_cell webd_rt_intrep_cell {% if s.int-report %}
+                                                        {%if s.int-report.in-time%}webd_rt_has_file_in_time{%else%}webd_rt_has_file{%endif%}
+                                                    {%else%}webd_rt_no_file{%endif%}">
+            {% if s.int-report %}
+            <a target="_blank" href="{{s.int-report.link}}"><img alt="PDF" src="pdf_icon.png"/></a>
+            {%endif%}
+        </td>
+        <td class="webd_rt_cell webd_rt_intsl_cell {% if s.int-slides %}
+                                                        {%if s.int-slides.in-time%}webd_rt_has_file_in_time{%else%}webd_rt_has_file{%endif%}
+                                                    {%else%}webd_rt_no_file{%endif%}">
+            {% if s.int-slides %}
+            <a target="_blank" href="{{s.int-slides.link}}"><img alt="PDF" src="pdf_icon.png"/></a>
+           {%endif%}
+        </td>
+        <td class="webd_rt_cell webd_rt_rep_cell {% if s.fin-report %}
+                                                        {%if s.fin-report.in-time%}webd_rt_has_file_in_time{%else%}webd_rt_has_file{%endif%}
+                                                    {%else%}webd_rt_no_file{%endif%}">
+            {% if s.fin-report %}
+            <a target="_blank" href="{{s.fin-report.link}}"><img alt="PDF" src="pdf_icon.png"/></a>
+            {%endif%}
+        </td>
+        <td class="webd_rt_cell webd_rt_sl_cell {% if s.fin-slides %}
+                                                        {%if s.fin-slides.in-time%}webd_rt_has_file_in_time{%else%}webd_rt_has_file{%endif%}
+                                                    {%else%}webd_rt_no_file{%endif%}">
+            {% if s.fin-slides %}
+            <a target="_blank" href="{{s.fin-slides.link}}"><img alt="PDF" src="pdf_icon.png"/></a>
+            {%endif%}
+        </td-->
+    </tr>
+    {% endfor %}
+</table>

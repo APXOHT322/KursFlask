@@ -1,0 +1,97 @@
+{% extends 'layout.html' %}
+
+{% block title %}Управление студентами и дисциплинами{% endblock %}
+
+{% block content %}
+<h1>Управление студентами и дисциплинами</h1>
+
+<h2>Студенты ({{ students|length }} найдено)</h2>
+{% if students %}
+<table border="1" cellpadding="5">
+    <thead>
+        <tr>
+            <th>ID</th>
+            <th>ФИО</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for student in students %}
+        <tr>
+            <td>{{ student.id }}</td>
+            <td>{{ student.fio }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<p style="color: red;">Студенты не найдены. Проверьте базу данных.</p>
+{% endif %}
+
+<h2>Дисциплины</h2>
+<table border="1" cellpadding="5">
+    <thead>
+        <tr>
+            <th>ID</th>
+            <th>Название</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for course in courses %}
+        <tr>
+            <td>{{ course.id }}</td>
+            <td>{{ course.name }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+<h2>Назначить или удалить студента с дисциплины</h2>
+<form method="POST" action="{{ url_for('manage_students_courses') }}">
+    <label for="student">Студент:</label>
+    <select name="student" id="student" required>
+        <option value="">Выберите студента</option>
+        {% for student in students %}
+        <option value="{{ student.id }}">{{ student.fio }}</option>
+        {% endfor %}
+    </select><br><br>
+
+    <label for="course">Дисциплина:</label>
+    <select name="course" id="course" required>
+        <option value="">Выберите дисциплину</option>
+        {% for course in courses %}
+        <option value="{{ course.id }}">{{ course.name }}</option>
+        {% endfor %}
+    </select><br><br>
+
+    <button type="submit" name="action" value="assign">Назначить</button>
+    <button type="submit" name="action" value="remove" onclick="return confirm('Удалить студента с дисциплины?')">Удалить</button>
+</form>
+
+<h2>Записанные студенты и их дисциплины</h2>
+{% if assigned %}
+<table border="1" cellpadding="5">
+    <thead>
+        <tr>
+            <th>ФИО студента</th>
+            <th>Выбранная дисциплина</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for s in assigned %}
+        <tr>
+            <td>{{ s.fio }}</td>
+            <td>{{ s.course_name }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<p>Нет записанных студентов.</p>
+{% endif %}
+
+<br>
+<a href="{{ url_for('reports_bp.generate_reports') }}">Сгенерировать отчет</a>
+<a href="{{ url_for('director_dashboard') }}">Панель управления</a><br>
+<a href="{{ url_for('manage_courses_bp.manage_courses') }}">Управление дисциплинами</a><br>
+<a href="{{ url_for('logout') }}">Выйти</a>
+{% endblock %}

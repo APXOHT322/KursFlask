@@ -1,0 +1,34 @@
+{% extends 'layout.html' %}
+
+{% block content %}
+  <header style="display: flex; justify-content: space-between; align-items: center;">
+    <h1>Привет, {{ user.fio }}</h1>
+    <!-- Кнопка выхода -->
+    <a href="{{ url_for('logout') }}" style="color: red; text-decoration: none; border: 1px solid red; padding: 5px 10px; border-radius: 5px;">
+      Выйти
+    </a>
+  </header>
+
+  <hr>
+
+  {% if user.has_role('Студент') %}
+    <section>
+      <h2>Функции студента</h2>
+      <a href="{{ url_for('student_courses.student_courses') }}" class="btn btn-primary">Мои курсы</a>
+    </section>
+  {% endif %}
+
+  {% if user.has_role('Преподаватель') %}
+    <section>
+      <h2>Функции преподавателя</h2>
+      <a href="{{ url_for('reports_bp.generate_reports') }}">Отчёты</a>
+    </section>
+  {% endif %}
+
+  {% if user.has_role('Специалист дирекции') %}
+    <section>
+      <h2>Панель дирекции</h2>
+      <a href="{{ url_for('director_dashboard') }}">Дирекция</a>
+    </section>
+  {% endif %}
+{% endblock %}

@@ -1,0 +1,100 @@
+{% extends "layout.html" %}
+
+{% block title %}
+Курс: регистрация работы
+{% endblock %}
+
+{% block content %}
+<div id="webd_user">
+    {% include "user_header.html" %}
+    <h2>Здравствуйте, {{student.full-name}}</h2>
+    <h2>Регистрационные данные за {{study-year}} уч. год</h2>
+	<h3>Курс: {{student.courses}}, Группа: {{student.groups}}</h3>
+	{% if not is-editable? %}
+	<h4>Внимание! Данные за этот год редактировать нельзя!</h4>
+	{% endif %}
+    <hr/>
+    {% if have-prev-year? %}
+	<form class="webd_user_copy_form" method="POST" action="/user/copy">
+		<input type="hidden" name="copy" value="true"/>
+		<em><b>Если данные (кроме года регистрации) не изменились - нажмите кнопку</b> <input type="submit" value="Скопировать" class="inp btn_copy"/></em>
+	</form>
+    {% endif %}
+    {% if result %}
+        <p>
+            <b class="webd_user_result_success">
+                {% if all result success? %}{{result}}{% endif %}
+            </b>
+            <b class="webd_user_result_failure">
+                {% if result %}{% if not success? %}{{result}}{% endif %}{% endif %}
+            </b>
+        </p>
+    {% endif%}
+	<form class="webd_user_form" method="POST" action="/user/identity/{{student.years}}">
+		<em>Для регистрации полностью новой работы необходимо заполнить все поля ввода, отмеченные символом <span class="star">*</span>!</em>
+		<div title="Имя и отчество руководителя работы в формате 'И.О. Фамилия'. Если руководителей несколько, то перечислить через запятую.">
+			<label for="adviser-name" class="user_form_label">
+                <span class="star">*</span>
+                Руководитель (в формате "И. О. Фамилия"):
+            </label>
+			<input type="text" id="adviser-name" name="adviser-name" class="user_adviser_name inp txt_inp"
+				placeholder="И. О. Фамилия" style="width:400px" pattern="([А-Я|A-Z]\.\s?){1,2}[А-Я|A-Z][А-Я|A-Z|а-я|a-z]{0,20}(,\s?([А-Я|A-Z]\.\s?){1,2}[А-Я|A-Z][А-Я|A-Z|а-я|a-z]{0,20})*"
+                required="required" value="{{student.adviser-name}}"/>
+		</div>
+		<div title="Должность, занимаемая руководителем работы. Например, 'преподаватель'.">
+			<label for="adviser-position" class="user_form_label"><span class="star">*</span>Должность руководителя:</label>
+			<select name="adviser-position" id="adviser-position" class="user_adviser_position inp txt_inp" required="required">
+				<option value="" disabled="disabled" selected="selected"></option>
+                {% for p in positions %}
+                <option value="{{p.value}}" {%if p.selected %}selected="selected"{% endif %}>
+                    {{p.value}}
+                </option>
+                {% endfor %}
+			</select>
+		</div>
+		<div title="Ученая степень руководителя работы (учитывать только степени кандидата и доктора наук).">
+			<label for="adviser-status" class="user_form_label">Ученая степень руководителя:</label>
+			<input id="adviser-status" placeholder="к. т. н." type="text"
+                   name="adviser-status" class="user_adviser_status inp txt_inp"
+				   list="status-list" autocomplete="off" value="{{student.adviser-status}}"
+                   pattern="[А-Яа-яA-Za-z\.\-\s]*"/>
+			<datalist id="status-list">
+				<option value="без степени"></option>
+				<option value="к. ф-м. н."></option>
+				<option value="д. ф-м. н."></option>
+				<option value="к. т. н."></option>
+				<option value="д. т. н."></option>
+				<option value="к. пед. н."></option>
+			</datalist>
+		</div>
+		<div title="Ученое звание руководителя работы. В россии существуют звания 'доцент' и 'профессор'.">
+			<label for="adviser-rank" class="user_form_label">Ученое звание руководителя:</label>
+			<select id="adviser-rank" name="adviser-rank" class="user_adviser_rank inp txt_inp">
+				<option value="" selected></option>
+                {% for r in ranks %}
+                <option value="{{r.value}}" {%if r.selected %}selected="selected"{% endif %}>
+                    {{r.value}}
+                </option>
+                {% endfor %}
+			</select>
+		</div>
+		<div title="Определяется по кафедре, к которой приписан научный руководитель.">
+			<label for="department" class="user_form_label"><span class="star">*</span>Кафедра:</label>
+			<select id="department" name="department" class="user_department inp txt_inp" required="required">
+                <option value="" disabled="disabled" selected="selected"></option>
+                {% for d in departments %}
+                <option value="{{d.value}}" {%if d.selected %}selected="selected"{% endif %}>
+                    {{d.value}}
+                </option>
+                {% endfor %}
+			</select>
+		</div>
+		<div>
+			<label for="user_title" class="user_form_label" style="vertical-align:top"><span class="star">*</span>Тема работы:</label>
+			<textarea id="user_title" name="title" class="user_title inp"
+                      rows="3" style="width:400px" maxlength="250" required="required">{{student.title}}</textarea>
+		</div>
+		<div><input type="submit" value="Отправить" class="inp btn_save"/></div>
+	</form>
+</div>
+{% endblock %}

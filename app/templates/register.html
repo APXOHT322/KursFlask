@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" http-equiv="X-UA-Compatible" content="IE=edge"/>
+    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='style_cs.css') }}"/>
+    <link media="all" rel="stylesheet" type="text/css" href="{{ url_for('static', filename='webd.css') }}"/>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.3/jquery.min.js"></script>
+    <script src="{{ url_for('static', filename='webd.js') }}"></script>
+    <title>{% block title %}Регистрация{% endblock %}</title>
+    <script>
+        $(document).ready(function() {
+            function toggleFields() {
+                // Проверяем, выбран ли хоть один чекбокс со значением "Студент"
+                const isStudent = $('input[name="roles"][value="Студент"]').is(':checked');
+                if (isStudent) {
+                    $('#direction_field').show();
+                    $('#direction').prop('disabled', false);
+                    $('#group_number_field').show();
+                    $('#group_number').prop('disabled', false);
+                    $('#admission_year_field').show();
+                    $('#admission_year').prop('disabled', false);
+                } else {
+                    $('#direction_field').hide();
+                    $('#direction').prop('disabled', true);
+                    $('#group_number_field').hide();
+                    $('#group_number').prop('disabled', true);
+                    $('#admission_year_field').hide();
+                    $('#admission_year').prop('disabled', true);
+                }
+            }
+
+            $('input[name="roles"]').on('change', toggleFields);
+            toggleFields(); // при загрузке страницы
+        });
+    </script>
+</head>
+<body>
+    <div id='js_check'>В вашем обозревателе отключен JavaScript либо установлен плагин NoScript. Для корректной работы данного сайта JavaScript необходим.</div>
+    {{header|safe}}
+    <div class="content">
+        <hr/>
+        <h1><a href="/" id="webd_title">Система <span style="color:#0E0EB3;">Курс</span></a></h1>
+        {% block content %}
+        <h1>Регистрация</h1>
+
+        {% if error %}
+            <div class="error-message" style="color: red; background-color: #ffe6e6; padding: 10px; margin-bottom: 15px; border: 1px solid #ff9999; border-radius: 4px;">
+                {{ error }}
+            </div>
+        {% endif %}
+
+        <form method="POST" id="register-form">
+            <div class="form-section">
+                <h3>Роли:</h3>
+                <div class="roles-container" style="margin-bottom:15px;">
+                    {% for role in roles %}
+                        <div class="role-checkbox">
+                            <input type="checkbox"
+                                   name="roles"
+                                   id="role_{{ loop.index }}"
+                                   value="{{ role }}"
+                                   {% if role in selected_roles %}checked{% elif form and form.get('roles') and role in form.getlist('roles') %}checked{% endif %}>
+                            <label for="role_{{ loop.index }}">{{ role }}</label>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <div class="form-section">
+                <label for="fio">ФИО:</label>
+                <input type="text" id="fio" name="fio" required value="{{ form.get('fio','') }}" placeholder="Введите ваше ФИО">
+            </div>
+
+            <div class="form-section" id="direction_field" style="display: none;">
+                <label for="direction">Направление:</label>
+                <select id="direction" name="direction" required>
+                    <option value="">Выберите направление</option>
+                    {% for direction in directions %}
+                        <option value="{{ direction.id }}"
+                            {% if (direction_id and direction_id|string == direction.id|string) or (form and form.get('direction') and form.get('direction') == direction.id|string) %}selected{% endif %}>
+                            {{ direction.name }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="form-section" id="group_number_field" style="display: none;">
+                <label for="group_number">Номер группы:</label>
+                <input type="text" id="group_number" name="group_number" required
+                       value="{{ group_number or form.get('group_number','') }}" 
+                       placeholder="Например: 2301">
+            </div>
+
+            <div class="form-section" id="admission_year_field" style="display: none;">
+                <label for="admission_year">Год поступления:</label>
+                <input type="number" id="admission_year" name="admission_year" required
+                       value="{{ form.get('admission_year','') }}" 
+                       min="2000" max="{{ current_year if current_year else 2025 }}" 
+                       placeholder="Например: 2023">
+                <small class="hint">Укажите год поступления</small>
+            </div>
+
+            <div class="form-section">
+                <label for="login">Логин:</label>
+                <input type="text" id="login" name="login" required 
+                       value="{{ form.get('login','') }}" placeholder="Введите логин для входа">
+            </div>
+
+            <div class="form-section">
+                <label for="password">Пароль:</label>
+                <input type="password" id="password" name="password" required 
+                       placeholder="Введите пароль">
+            </div>
+
+            <div class="form-section">
+                <button type="submit" class="submit-btn">Зарегистрироваться</button>
+                <a href="{{ url_for('login') }}" class="cancel-link">Отмена</a>
+            </div>
+        </form>
+        {% endblock %}
+        <hr/>
+    </div>
+    <div class="footer">
+        <!-- footer без изменений -->
+    </div>
+</body>
+</html>

@@ -1,0 +1,179 @@
+{% extends "layout.html" %}
+
+{% block title %}
+Система Курс
+{% endblock %}
+
+{% block content %}
+<div id="webd">
+    <div id="webd_left_side" class="webd_sides">
+        {% include "user_header.html" %}
+
+        <p>Система предназначена для учета курсовых и выпускных работ студентов,
+            загрузки, хранения, поиска и демонстрации файлов презентаций и отчетов.</p>
+
+        <p>Для корректного учета работ студент обязан в начале учебного года <b>зарегистрировать
+            данные о работе</b>. Это необходимо, поскольку возможны изменения руководителя и/или темы работы.
+            Если изменений по сравнению с предыдущим учебным годом не было, то регистрация выполняется
+            нажатием кнопки "Скопировать" на странице регистрации. Для обеспечения актуальности данных о работе,
+            выполняемой в текущем учебном году, их следует корректировать.
+            Регистрацию желательно выполнить сразу после согласования темы работы с руководителем.</p>
+
+        <p>Студент обязан <b>загрузить файлы презентации и отчета</b> (формат только PDF):
+        <ul>
+            <li>промежуточные &mdash; 2, 3 и 5 курсы до 30 декабря текущего года, выпускники 4 и 6 курсов &mdash;
+                за два дня до начала сессии согласно графику учебного процесса текущего учебного года;
+            </li>
+            <li>окончательные &mdash; до даты защиты курсовых работ или предзащиты выпускных работ.</li>
+        </ul>
+        Правила, шаблоны и инструменты подготовки презентаций и отчетов см. в разделах 2 и 3 документа
+        <a href="http://www.cs.petrsu.ru/studies/kurs/kurs.php.ru">Курсовые и выпускные работы</a>
+        соответственно.</p>
+
+        <p>Функции регистрации и загрузки файлов отчетов доступны только студентам,
+            имеющим учетные записи (логин, пароль) в вычислительной системе кафедры ИМО,
+            после входа в систему «Курс».</p>
+    </div>
+    <!--div id="webd_right_side" class="webd_sides">
+        Умен ты или глуп,<br/>
+        Велик ты или мал,<br/>
+        Не знаем мы, пока<br/>
+        Ты слово не сказал!<br/>
+        <i>Саади, персидский поэт и мыслитель XIII в. </i>
+    </div-->
+    {% if logged? %}
+    <!--p>Инструкции:
+        <ul>
+            <li><a href="info_correction_instruction.pdf">по исправлению курса и группы студента;</a></li>
+            <li><a href="file_adding_instruction.pdf">по внесению файлов студента администратором.</a></li>
+        </ul>
+        </p-->
+    <div id="prv_year_instruction_button" onclick="togglePrvYearInstruction();">
+        Инструкция по редактированию прошлых лет &darr;</div>
+    <div id="prv_year_instruction_content" class="hidden">
+        <p>Для редактирования данных за прошлые учебные года нужно:</p>
+        <ul>
+            <li>авторизоваться в системе курс;</li>
+            <li>перейти на вкладку "Регистрация работы";</li>
+            <li>добавить в адресной строке браузера "/&lt;год начала работы>";</li>
+            <li>перейти по получившемуся адресу;</li>
+            <li>откроется аналогичная страница регистрации работы, но за другой год.</li>
+        </ul>
+        <p>Например, изначальная ссылка выглядит так:<br/>
+            https://kurs.cs.petrsu.ru/user/identity<br/>
+            ссылка для редактирования работы за 2019-2020 учебный год будет выглядеть так:<br/>
+            https://kurs.cs.petrsu.ru/user/identity/2019</p>
+
+        <p>Загрузка файлов за предыдущие года производится аналогично.
+            Изначальная ссылка для загрузки файлов:<br/>
+            https://kurs.cs.petrsu.ru/user/file<br/>
+            Ссылка для загрузки файлов за 2019-2020 учебный год:<br/>
+            https://kurs.cs.petrsu.ru/user/file/2019</p>
+    </div>
+    <form id="webd_form" method="POST" action="/query">
+        <h2>Поиск и просмотр работ</h2>
+        <div class="labeled_select"
+             title="Для списка доступен множественный выбор. Для этого нужно либо провести указателем с зажатой левой кнопкой мыши по смежным группам, либо выбрать отдельностоящие группы одиночным нажатием на левую кнопку мыши с зажатой клавишей Ctrl.">
+            <label for="inp_year">Календарный год начала работы</label> <br/>
+            <select name="years" id="inp_year" class="inp txt_inp" size="7" multiple="multiple">
+                {% for y in years %}
+                <option value="{{y}}" {%ifequal y last-year%}selected="selected" {%endifequal%}>{{y}}</option>
+                {% endfor %}
+                <option value="">Все</option>
+            </select>
+        </div>
+        <div class="labeled_select"
+             title="Для списка доступен множественный выбор. Для этого нужно либо провести указателем с зажатой левой кнопкой мыши по смежным группам, либо выбрать отдельностоящие группы одиночным нажатием на левую кнопку мыши с зажатой клавишей Ctrl.">
+            <label for="inp_group">Группа</label> <br/>
+            <select name="groups" id="inp_group" class="inp txt_inp" size="7" multiple="multiple">
+                <option value="" selected="selected">Все</option>
+                {% for g in groups %}
+                <option value="{{g}}">{{g}}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <br/>
+        <label for="inp_department">Кафедра</label>
+        <select name="department" id="inp_department" class="inp txt_inp">
+            <option value="" selected="selected">Все</option>
+            {% for d in departments %}
+            <option value="{{d}}">{{d}}</option>
+            {% endfor %}
+        </select>
+
+        <br/>
+
+        <label for="inp_student">Фамилия студента</label>
+        <input type="text" name="name" id="inp_student" class="inp txt_inp"/>
+
+        <br/>
+
+        <label for="inp_adviser">Руководитель</label>
+        <input type="text" name="adviser-name" id="inp_adviser" class="inp txt_inp"/>
+
+        <br/>
+        <div id="webd_form_show_additional" onclick="showHideAdditional();">Больше &darr;</div>
+
+        <div id="webd_form_additional" class="hidden">
+            <label style="display:none" for="inp_have_index">Студенты</label>
+            <select name="have-index" id="inp_have_index" class="inp txt_inp hidden">
+                <option value="registered" selected="selected">Зарегистрировавшие работы</option>
+                <option value="unregistered">Не зарегистрировавшие работы</option>
+                <option value="all">Все</option>
+            </select>
+
+            <!--label for="inp_have_index">Только зарегистрированные работы</label>
+            <input type="checkbox" name="have-index" id="inp_have_index" value="true" checked="checked" class="inp" /-->
+
+            <!--br/-->
+
+            <label for="group_method">Сгруппировать</label>
+            <select name="group-method" id="group_method" class="inp txt_inp">
+                <option value="default" selected="selected">По годам, кафедрам, группам</option>
+                <option value="flatten">Общим списком</option>
+            </select>
+
+            <br/>
+
+            <label for="sort_method">Отсортировать по</label>
+            <select name="sort-method" id="sort_method" class="inp txt_inp">
+                <option value="by-student-name" selected="selected">Имени студента</option>
+                <option value="by-adviser-name">Имени руководителя</option>
+                <option value="by-identity-date">Дате регистрации</option>
+            </select>
+
+            <br/>
+            <label for="sort_order">Порядок сортировки</label>
+            <select name="sort-order" id="sort_order" class="inp txt_inp">
+                <option value="ascending" selected="selected">По возрастанию</option>
+                <option value="descending">По убыванию</option>
+            </select>
+            <!--br/>
+			<label>Распоряжение об утверждении тем</label>
+			<input type="submit" id="btn_directive_bak" value="Для бакалавриата" class="inp"
+				   formaction="/query/directive_bak" formtarget="_blank"
+				   title="Генерирует RTF-файл по студентам бакалавриата, удовлетворяющих введенным в форму 'Поиск работ' параметрам."/>
+			<input type="submit" id="btn_directive_mag" value="Для магистратуры" class="inp"
+				   formaction="/query/directive_mag" formtarget="_blank"
+				   title="Генерирует RTF-файл по студентам магистратуры, удовлетворяющих введенным в форму 'Поиск работ' параметрам."/-->
+
+            <br/>
+        </div>
+
+        <input type="submit" id="btn_search" value="Найти" class="inp"
+               title="Выводит таблицу с информацией о студентах, удовлетворяющих введенным в форму 'Поиск работ' параметрам."/>
+        <input type="submit" id="btn_report" value="Отчет" class="inp"
+               formaction="/query/report" formtarget="_blank"
+               title="Генерирует PDF-файл с информацией о студентах, удовлетворяющих введенным в форму 'Поиск работ' параметрам."/>
+        <input type="submit" id="btn_missing_report" value="Список не зарегистрированных" class="inp hidden"
+               formaction="/query/missing" formtarget="_blank"
+               title="Генерирует PDF-файл с информацией о студентах, не зарегистрировавших работы в текущем году"/>
+    </form>
+
+    <div id="webd_result"></div>
+    {% else %}
+    <p id="webd_form">Для поиска и просмотра работ необходимо авторизоваться!</p>
+    {% endif %}
+</div>
+{% endblock %}

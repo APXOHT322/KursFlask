@@ -1,0 +1,8 @@
+{% extends 'layout.html' %}
+
+{% block content %}
+  <h1>Сформировать отчет</h1>
+  <form method="POST" action="{{ url_for('reports_bp.generate_reports') }}">
+    <button type="submit">Сформировать отчет</button>
+  </form>
+{% endblock %}

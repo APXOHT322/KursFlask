@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" http-equiv="X-UA-Compatible" content="IE=edge" />
+    <title>{% block title %}Система Курс{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='manage_courses.css') }}">
+    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='style_cs.css') }}">
+    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='webd.css') }}">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.3/jquery.min.js"></script>
+    <script src="{{ url_for('static', filename='webd.js') }}"></script>
+
+    <style>
+        body {
+            font-family: serif;
+            font-size: 14px;
+            margin: 0 auto;
+            width: 960px;
+            color: black;
+            background: white;
+        }
+
+        h1, h2 {
+            font-weight: normal;
+            margin-top: 1em;
+        }
+
+        table {
+            border-collapse: collapse;
+        }
+
+        table, th, td {
+            border: 1px solid black;
+        }
+
+        th, td {
+            padding: 5px;
+            text-align: left;
+        }
+
+        a {
+            color: #0000EE;
+            text-decoration: underline;
+        }
+
+        .footer {
+            margin-top: 2em;
+            font-size: 12px;
+        }
+
+        address {
+            font-style: italic;
+        }
+
+        #js_check {
+            color: red;
+            font-weight: bold;
+        }
+
+        #webd_title {
+            font-size: 24px;
+            text-decoration: none;
+        }
+
+        hr {
+            margin-top: 1em;
+            margin-bottom: 1em;
+        }
+
+        #date-block {
+            font-size: 20px;
+            color: #0E0EB3;
+            text-shadow: 1px 1px 0 #ddd;
+            margin-top: 10px;
+            margin-left: 10px; /* Добавляем отступ слева */
+        }
+    </style>
+</head>
+
+<body>
+    <div id="js_check">
+        В вашем обозревателе отключен JavaScript либо установлен плагин NoScript. Для корректной работы данного сайта JavaScript необходим.
+    </div>
+
+    <!-- Шапка -->
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 10px;">
+        <!-- Левый блок: логотип + дата -->
+        <div style="display: flex; align-items: center; text-align: center;">
+            <img src="{{ url_for('static', filename='cs_logo.png') }}" alt="Логотип">
+            <div id="date-block"></div>
+        </div>
+
+        <!-- Центральный блок: заголовок и ссылки -->
+        <div style="text-align: center; flex-grow: 1;">
+            <div style="font-size: 24px; color: #0e0eb3; text-shadow: 1px 1px 0 #ddd;">
+                Кафедра Информатики и Математического Обеспечения
+            </div>            
+            <div style="margin-top: 5px;">
+                <a href="#">ПетрГУ</a> |
+                <a href="#">ИМиИТ</a> |
+                <a href="#">О кафедре</a> |
+                <a href="#">Проекты</a> |
+                <a href="#">Лаборатория ИТС</a> |
+                <a href="#">Семинары НФИ/AMICT</a><br>
+                <a href="#">Сотрудники</a> |
+                <a href="#">Учебный процесс</a> |
+                <a href="#">Табель-календарь</a> |
+                <a href="#">Курсовые и выпускные работы</a><br>
+                <a href="#">Вычислительные ресурсы</a> |
+                <a href="#">Публикации</a> |
+                <a href="#">Архив новостей</a> |
+                <a href="#">Контактная информация (English)</a>
+            </div>
+        </div>
+
+        <!-- Правый блок: пингвин -->
+        <div style="text-align: center;">
+            <img src="{{ url_for('static', filename='pinguin.png') }}" alt="Пингвин" style="max-width: 50px;"><br>
+            <span>с 1994 г.</span>
+        </div>
+    </div>
+    <hr>
+
+    {{ header|safe }}
+
+    <div class="content">
+        <h1>
+            <a href="/" id="webd_title">Система <span style="color:#0E0EB3;">Курс</span></a>
+        </h1>
+
+        {% block content %}
+        {% endblock %}
+
+    </div>
+    <hr>  <!-- Add hr here -->
+
+    <div class="footer">
+        <div style="width: 450px; float: left;">
+            <address>
+                <i>Вопросы и замечания по системе Курс: <a href="mailto:chistyak@cs.petrsu.ru">Д.Б. Чистяков</a></i><br>
+                <i style="display: none;">Последние изменения: <span id="webd_last_edited"></span></i>
+            </address>
+        </div>
+        <div style="width: 450px; text-align: right; float: right;">
+            <i>Руководитель работы: заведующий кафедрой ИМО, Ю.А. Богоявленский</i><br>
+            <i>Разработчики: А.А. Андреев, В.М. Димитров</i><br>
+            <i>Системный администратор: Е.И. Рыбин, В.А. Пономарев</i>
+        </div>
+        <div style="clear: both;"></div>
+    </div>
+
+    <script>
+        // Определить дату
+        const now = new Date();
+        const day = now.getDate();
+        const monthNames = [
+            "Янв", "Фев", "Март", "Апр", "Май", "Июнь",
+            "Июль", "Авг", "Сент", "Окт", "Нояб", "Дек"
+        ];
+        const month = monthNames[now.getMonth()];
+
+        // Расчёт числитель/знаменатель
+        function getWeekType(date) {
+            const startDate = new Date("2025-02-12"); // дата начала семестра
+            const diff = Math.floor((date - startDate) / (1000 * 60 * 60 * 24 * 7));
+            return (diff % 2 === 0) ? "Числитель" : "Знаменатель";
+        }
+
+        const weekType = getWeekType(now);
+        const dateText = `${month}, ${day}<br>${weekType}`;
+        document.getElementById("date-block").innerHTML = dateText;
+    </script>
+</body>
+</html>

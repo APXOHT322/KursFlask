@@ -1,0 +1,106 @@
+{% extends 'layout.html' %}
+
+{% block title %}Управление дисциплинами{% endblock %}
+
+{% block content %}
+<h1>Управление дисциплинами</h1>
+<p>Добро пожаловать, {{ user.fio }}!</p>
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% if messages %}
+    <div class="messages">
+      {% for category, message in messages %}
+        <div class="alert {% if category == 'success' %}alert-success{% else %}alert-danger{% endif %}">
+          {{ message }}
+        </div>
+      {% endfor %}
+    </div>
+  {% endif %}
+{% endwith %}
+
+<div class="action-buttons">
+    <div class="left-button">
+      <form method="POST" action="{{ url_for('manage_courses_bp.toggle_enrollment') }}">
+        <button type="submit" class="btn btn-primary">
+          {% if settings and settings.is_enrollment_open %}
+            Закрыть запись на дисциплины
+          {% else %}
+            Открыть запись на дисциплины
+          {% endif %}
+        </button>
+      </form>
+    </div>
+  
+    <div class="right-button">
+      <form action="{{ url_for('manage_courses_bp.upload_plan') }}" method="post" enctype="multipart/form-data" class="upload-form mb-2">
+        <input type="file" name="plan_file" accept=".xls,.xlsx" required>
+        <button type="submit" class="btn btn-secondary mt-2">Загрузить учебный план</button>
+      </form>
+    </div>
+  </div>
+
+<div class="filter-section">
+  <h2>Фильтровать дисциплины по направлению</h2>
+  <form method="GET" action="{{ url_for('manage_courses_bp.manage_courses') }}">
+      <label for="direction_filter">Направление (с годом):</label>
+      <select name="direction_filter" id="direction_filter">
+          <option value="">Все направления</option>
+          {% for direction in directions %}
+              <option value="{{ direction.id }}" {% if direction.id == selected_direction_id %}selected{% endif %}>
+                  {{ direction.name }} ({{ direction.year }} год)
+              </option>
+          {% endfor %}
+      </select>
+      <button type="submit" class="btn btn-primary">Применить фильтр</button>
+  </form>
+</div>
+
+{% if elective_courses %}
+    {# Убрал кнопку удаления всех дисциплин #}
+    
+    {# Группируем дисциплины по направлению и году #}
+    {% set grouped_courses = {} %}
+    {% for course in elective_courses %}
+        {% set direction_key = course.direction.code ~ " - " ~ course.direction.name ~ " (" ~ course.direction.year ~ " год)" %}
+        {% if direction_key not in grouped_courses %}
+            {% set _ = grouped_courses.update({direction_key: []}) %}
+        {% endif %}
+        {% set _ = grouped_courses[direction_key].append(course) %}
+    {% endfor %}
+    
+    {# Сортируем по коду направления и году #}
+    {% set sorted_directions = grouped_courses.keys()|sort %}
+    
+    {% for direction_name in sorted_directions %}
+        {% set courses_list = grouped_courses[direction_name] %}
+        <h2>{{ direction_name }}</h2>
+        <table class="table table-bordered">
+            <thead>
+                <tr>
+                    <th width="70%">Название дисциплины</th>
+                    <th width="30%">Семестр</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for course in courses_list|sort(attribute='semester') %}
+                    <tr>
+                        <td>{{ course.name }}</td>
+                        <td>{{ course.semester }}</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% endfor %}
+{% else %}
+    <div class="alert alert-info">
+        <p>Нет загруженных дисциплин. Загрузите учебный план, чтобы увидеть дисциплины по выбору.</p>
+    </div>
+{% endif %}
+
+<div class="navigation-links">
+    <a href="{{ url_for('manage_students_courses') }}" class="btn btn-link">Управление студентами и дисциплинами</a>
+    <a href="{{ url_for('reports_bp.generate_reports') }}" class="btn btn-link">Сгенерировать отчет</a>
+    <a href="{{ url_for('director_dashboard') }}" class="btn btn-link">Панель управления</a>
+    <a href="{{ url_for('logout') }}" class="btn btn-link">Выйти</a>
+</div>
+{% endblock %}

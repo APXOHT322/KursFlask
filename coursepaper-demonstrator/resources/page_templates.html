@@ -1,0 +1,66 @@
+{% extends "layout.html" %}
+
+{% block title %}
+Курс: шаблоны
+{% endblock %}
+
+{% block content %}
+{% include "user_header.html" %}
+<p>В соответствующих разделах документа 
+   <a href="https://www.cs.petrsu.ru/studies/kurs/kurs.php.ru">«Курсовые и выпускные работы»</a>
+   доступны инструкции по подготовке
+   <a href="https://www.cs.petrsu.ru/studies/kurs/kurs.php.ru#k2">отчетов о курсовой работе или выпускных работ</a> 
+   и <a href="https://www.cs.petrsu.ru/studies/kurs/kurs.php.ru#k3">презентаций</a>.</p>
+<p style="text-align:justify">Для упрощения работы студента разработаны шаблоны отчета в макропакете 
+   <span class="tex">L<sub>a</sub>T<sub>e</sub>X</span>
+   и презентации в его классе Beamer. Использование шаблонов не требует глубокого 
+   знания инструментов <span class="tex">T<sub>e</sub>X</span>, <span class="tex">L<sub>a</sub>T<sub>e</sub>X</span>, 
+   Beamer, достаточно уметь отличать их конструкции от содержательного текста. 
+   В случае затруднений можно воспользоваться
+   <a href="https://www.researchgate.net/publication/235255954_LaTeX_po-russki">описанием языка</a> 
+   <span class="tex">L<sub>a</sub>T<sub>e</sub>X</span>, 
+   <a href="https://kappa.cs.karelia.ru/~olbgvl/kt-math/beameruserguide.pdf">документацией</a> пакета Beamer на английском языке, 
+   <a href="https://www-sbras.nsc.ru/win/docs/TeX/LaTex2e/Color_in_LaTeX.pdf">некоторыми полезными примерами</a>, 
+   обратиться к руководителю или к дежурному по кафедре. 
+   </p>
+   
+   <p>Шаблоны можно выгрузить в рабочий каталог в архивах формата ZIP:</p>
+   <ol>
+	<li>Шаблоны отчетов:</li>
+   <ul>
+      <li><a href="https://kappa.cs.karelia.ru/p/Templates/interim/report.zip">промежуточный</a>;</li>
+      <li><a href="https://kappa.cs.karelia.ru/p/Templates/Bachelor/report.zip">выпускная квалификационная работа бакалавра</a>;</li>
+      <li><a href="https://kappa.cs.karelia.ru/p/Templates/Master/report.zip">магистерская диссертация</a>.</li>
+   </ul>
+	<li>Шаблоны презентаций:</li>
+   <ul>
+      <li>промежуточная:</li>
+	<ul>
+	<li><a href="https://kappa.cs.karelia.ru/p/Templates/interim/presentation.zip">для студентов кафедры ИМО</a></li>
+	<li><a href="https://kappa.cs.karelia.ru/p/Templates/interim/presentation_pmik.zip">для студентов кафедры ПМиК</a></li>
+	</ul>
+      <li>выпускная квалификационная работа бакалавра:</li>
+	<ul>
+	<li><a href="https://kappa.cs.karelia.ru/p/Templates/Bachelor/presentation.zip">для студентов кафедры ИМО</a></li>
+	<li><a href="https://kappa.cs.karelia.ru/p/Templates/Bachelor/presentation_pmik.zip">для студентов кафедры ПМиК</a></li>
+	</ul>
+      <li>магистерская диссертация:</li>
+	<ul>
+	<li><a href="https://kappa.cs.karelia.ru/p/Templates/Master/presentation.zip">для студентов кафедры ИМО</a></li>
+	<li><a href="https://kappa.cs.karelia.ru/p/Templates/Master/presentation_pmik.zip">для студентов кафедры ПМиК</a></li>
+	</ul>
+   </ul>
+   </ol>
+   <p>Также, файлы шаблонов доступны для просмотра и скачивания в соответсвующих каталогах в
+      <a href="https://kappa.cs.karelia.ru/p/Templates/">файловой системе кафедры</a>.</p>
+      
+   <p style="text-align:justify">После распаковки любого из архивов шаблонов 
+      ЭП будут доступны файл "slidex.tex", содержащий структуру и текст презентации, файл темы 
+      оформления презентации (с расширением ".sty") и каталог "images" для иллюстраций (основные форматы JPEG, PNG, PDF).</p>
+      
+   <p style="text-align:justify">Архив с шаблоном промежуточного отчета содержит файл "report.tex" 
+      и каталог "images" для иллюстраций.</p>
+      
+   <p style="text-align:justify">Архивы с шаблонами выпускной квалификационной работы бакалавра и магистерской диссертации
+      содержат несколько файлов с расширением ".tex" и каталог "images" для иллюстраций.</p>
+{% endblock %}

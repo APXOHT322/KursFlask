@@ -1,0 +1,34 @@
+<div class="webd_user_header">
+    <a href="/#webd_form" id="search_link">К поиску и просмотру работ</a> |
+    <a href="/templates" id="templates_link" {% if page-templates %}class="user_no_file" {% endif %}>Шаблоны отчетов и
+        презентаций</a>
+
+    <a href="http://localhost:5000" target="_blank">Запись на дисциплины    </a>    
+    {% if logged? %}
+    |
+    {% ifequal logged? :rstudent %}
+    <a href="/user/identity" id="identity_link" {% if page-identity %}class="user_no_file" {% endif %}>Регистрация
+        работы</a> |
+    <a href="/user/file" id="upload_link" {% if page-upload %}class="user_no_file" {% endif %}>Загрузка файлов</a> |
+    {% else %}
+    <a href="/query-adviser" {% if page-adviser %}class="user_no_file" {% endif %}>Руководство</a> |
+    {% endifequal %}
+    <a href="/login/exit">Выход</a>
+    {% else %}
+    <div style="margin-top:10px">
+        <span>Вход:</span>
+        <form id="webd_login_form" action="/login" method="POST" style="display:inline"
+              title="После авторизации доступно: регистрация работ, изменение личных данных, добавление и удаление файлов отчетов">
+            <input placeholder="Имя пользователя" type="text" name="username"
+                   id="inp_username" class="inp txt_inp" maxlength="15"
+                   title="Вход доступен с помощью логина и пароля студента в сервисах кафедры ИМО (например, сервер kappa или сервис moodle)"
+                   autofocus/>
+            <input placeholder="Пароль" type="password" name="password"
+                   id="inp_password" class="inp txt_inp" maxlength="15"
+                   title="Вход доступен с помощью логина и пароля студента в сервисах кафедры ИМО (например, сервер kappa или сервис moodle)"/>
+            <input type="submit" id="btn_login" value="Войти" class="inp"/>
+            <div id="login_response">{{response}}</div>
+        </form>
+    </div>
+    {% endif %}
+</div>

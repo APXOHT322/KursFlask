@@ -1,0 +1,20 @@
+{% extends 'layout.html' %}
+
+{% block title %}Панель управления специалиста дирекции{% endblock %}
+
+{% block content %}
+    <div class="dashboard-container">
+        <h1>Панель управления специалиста дирекции</h1>
+        <p>Добро пожаловать, {{ user.fio }}!</p>
+
+        <div class="dashboard-links">
+            <a href="{{ url_for('manage_courses_bp.manage_courses') }}">Управление дисциплинами</a>
+            <a href="{{ url_for('manage_students_courses') }}">Управление студентами и дисциплинами</a>
+            <a href="{{ url_for('reports_bp.generate_reports') }}">Сгенерировать отчет</a>
+        </div>
+
+        <div class="logout-section">
+            <a href="{{ url_for('logout') }}">Выйти</a>
+        </div>
+    </div>
+{% endblock %}

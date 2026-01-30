@@ -1,0 +1,96 @@
+{% extends 'layout.html' %}
+
+{% block title %}Подтверждение изменений дисциплин{% endblock %}
+
+{% block content %}
+<div class="custom-container">
+    <h1>Подтверждение изменений дисциплин</h1>
+    <p><strong>Направление:</strong> {{ direction.name }} ({{ direction.code }})</p>
+
+    <form action="{{ url_for('manage_courses_bp.confirm_upload') }}" method="POST">
+
+        <div class="section">
+            <h2>Дисциплины, которые будут добавлены</h2>
+            {% if to_add %}
+                <table class="custom-table">
+                    <thead>
+                        <tr>
+                            <th>Выбрать</th>
+                            <th>Название</th>
+                            <th>Семестр</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for course in to_add %}
+                            <tr>
+                                <td><input type="checkbox" name="course_add_{{ loop.index0 }}" value="1" checked></td>
+                                <td><input type="text" name="course_name_{{ loop.index0 }}" value="{{ course.name }}"></td>
+                                <td>
+                                    {{ course.semester }}
+                                    <input type="hidden" name="course_semester_{{ loop.index0 }}" value="{{ course.semester }}">
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                <input type="hidden" name="to_add_count" value="{{ to_add|length }}">
+            {% else %}
+                <p class="muted">Нет новых дисциплин для добавления.</p>
+            {% endif %}
+        </div>
+
+        <div class="section">
+            <h2>Дисциплины, которые будут удалены</h2>
+            {% if to_delete %}
+                <table class="custom-table">
+                    <thead>
+                        <tr>
+                            <th>Название</th>
+                            <th>Семестр</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for course in to_delete %}
+                            <tr>
+                                <td>{{ course.name }}</td>
+                                <td>{{ course.semester }}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            {% else %}
+                <p class="muted">Нет дисциплин для удаления.</p>
+            {% endif %}
+        </div>
+
+        <div class="section">
+            <h2>Дисциплины, которые остались без изменений</h2>
+            {% if no_changes %}
+                <table class="custom-table">
+                    <thead>
+                        <tr>
+                            <th>Название</th>
+                            <th>Семестр</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for course in no_changes %}
+                            <tr>
+                                <td>{{ course.name }}</td>
+                                <td>{{ course.semester }}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            {% else %}
+                <p class="muted">Нет дисциплин без изменений.</p>
+            {% endif %}
+        </div>
+
+        <div class="button-row">
+            <a href="{{ url_for('manage_courses_bp.manage_courses') }}" class="btn btn-outline-secondary">Отмена</a>
+            <button type="submit" class="btn btn-success">Подтвердить изменения</button>
+        </div>
+    </form>
+</div>
+{% endblock %}

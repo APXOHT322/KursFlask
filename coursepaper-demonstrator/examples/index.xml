@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<diploma
+    xmlns="http://cs.karelia.ru/p"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://cs.karelia.ru/p http://www.cs.karelia.ru/style/diploma.xsd">
+
+    <name>Иванов И.И.</name> 
+
+    <adviser>
+        <name>Маккарти Джон</name>
+        <status>к.ф.-м.н., доцент</status>
+    </adviser>
+    
+    <department>ИМО</department>
+    <title>Многофракционный подход к исследованию волновых переходов графических изображений</title>
+
+</diploma>

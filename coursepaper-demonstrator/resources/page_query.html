@@ -1,0 +1,13 @@
+{% extends "layout.html" %}
+
+{% block title %}
+Курс: поиск{% if subtitle %} &mdash; {{subtitle}}{% endif %}
+{% endblock %}
+
+{% block content %}
+{% include "user_header.html" %}
+{% if subtitle %}
+<h1>{{subtitle}}</h1>
+{% endif %}
+<div id="webd_result">{{query-result|safe}}</div>
+{% endblock %}

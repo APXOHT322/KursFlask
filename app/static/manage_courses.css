@@ -1,0 +1,292 @@
+.action-buttons {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 30px;
+    flex-wrap: wrap;
+}
+
+.left-button, .right-button {
+    flex: 1;
+    display: flex;
+    align-items: center;
+}
+
+.left-button {
+    justify-content: flex-start;
+}
+
+.right-button {
+    justify-content: flex-end;
+}
+
+.upload-form input[type="file"] {
+    margin-right: 10px;
+}
+
+.filter-section {
+    margin-top: 30px;
+    margin-bottom: 30px;
+}
+
+.filter-section select {
+    margin-right: 10px;
+}
+
+.table {
+    width: 100%;
+    margin-top: 20px;
+    border-collapse: collapse;
+}
+
+.table th, .table td {
+    padding: 8px;
+    text-align: left;
+}
+
+.table th {
+    background-color: #f4f4f4;
+}
+
+.navigation-links {
+    margin-top: 20px;
+}
+
+.navigation-links .btn-link {
+    margin-right: 15px;
+}
+
+.alert {
+    padding: 10px;
+    margin-bottom: 15px;
+    border-radius: 5px;
+}
+
+.alert-success {
+    background-color: #d4edda;
+    color: #155724;
+}
+
+.alert-danger {
+    background-color: #f8d7da;
+    color: #721c24;
+}
+
+.custom-container {
+    max-width: 1000px;
+    margin: 40px auto;
+    padding: 0 20px;
+}
+
+.section {
+    margin-bottom: 40px;
+}
+
+.custom-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 15px;
+}
+
+.custom-table th,
+.custom-table td {
+    border: 1px solid #ccc;
+    padding: 10px;
+    text-align: left;
+}
+
+.custom-table th {
+    background-color: #f0f0f0;
+}
+
+.custom-table input[type="text"] {
+    width: 100%;
+    padding: 5px;
+    box-sizing: border-box;
+}
+
+.muted {
+    color: #777;
+    font-style: italic;
+}
+
+.button-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 20px;
+    margin-top: 20px;
+}
+
+.login-container {
+    max-width: 400px;
+    margin: 60px auto;
+    padding: 30px;
+    border: 1px solid #ccc;
+    border-radius: 10px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    background-color: #fff;
+    text-align: center;
+}
+
+.login-form {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    margin-top: 20px;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+    text-align: left;
+}
+
+.form-group label {
+    margin-bottom: 5px;
+    font-weight: bold;
+}
+
+.form-group input {
+    padding: 8px;
+    font-size: 1rem;
+    border: 1px solid #aaa;
+    border-radius: 5px;
+}
+
+.button-group {
+    display: flex;
+    justify-content: space-between;
+    gap: 15px;
+}
+
+.button-group button {
+    flex: 1;
+    padding: 10px;
+    font-size: 1rem;
+    cursor: pointer;
+}
+
+.register-link {
+    margin-top: 20px;
+}
+
+.dashboard-container {
+    max-width: 800px;
+    margin: 50px auto;
+    padding: 30px;
+    background-color: #fff;
+    text-align: center;
+}
+
+.dashboard-links {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    margin-top: 20px;
+}
+
+.dashboard-links a {
+    display: inline-block;
+    padding: 10px 20px;
+    font-size: 1.1rem;
+    text-decoration: none;
+    color: inherit;
+    background-color: #f8f9fa;
+    text-align: center;
+    border-radius: 5px;
+}
+
+.dashboard-links a:hover {
+    background-color: #e2e6ea;
+}
+
+.logout-section {
+    margin-top: 30px;
+}
+
+.container {
+    max-width: 900px;
+    margin: 40px auto;
+    padding: 20px;
+    background-color: #f9f9f9;
+    border-radius: 8px;
+}
+
+.page-title {
+    text-align: center;
+    font-size: 2rem;
+    margin-bottom: 30px;
+}
+
+.user-info,
+.status,
+.chosen-courses {
+    margin-bottom: 20px;
+}
+
+.status p {
+    font-size: 1.1rem;
+    font-weight: bold;
+    text-align: center;
+}
+
+.status.open {
+    color: green;
+}
+
+.status.closed {
+    color: red;
+}
+
+.chosen-courses h3 {
+    font-size: 1.3rem;
+    margin-bottom: 10px;
+}
+
+.chosen-courses ul {
+    list-style-type: none;
+    padding-left: 0;
+}
+
+.chosen-courses li {
+    font-size: 1.1rem;
+    margin-bottom: 5px;
+}
+
+.course-pair {
+    margin-bottom: 20px;
+    padding: 15px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    background-color: #fafafa;
+}
+
+.course-pair legend {
+    font-size: 1.2rem;
+    font-weight: bold;
+}
+
+.course-pair label {
+    font-size: 1.1rem;
+}
+
+.button-row {
+    display: flex;
+    justify-content: center;
+    margin-top: 20px;
+}
+
+.logout-section {
+    text-align: center;
+    margin-top: 30px;
+}
+
+.logout-link {
+    font-size: 1.1rem;
+    text-decoration: none;
+    color: #007bff;
+}
+
+.logout-link:hover {
+    text-decoration: underline;
+}

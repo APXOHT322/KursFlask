@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8" http-equiv="X-UA-Compatible" content="IE=edge"/>
+        <link rel="stylesheet" type="text/css" href="/style_cs.css"/>
+        <link media="all" rel="stylesheet" type="text/css" href="/webd.min.css"/>
+        <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.3/jquery.min.js"></script>
+        <script src="/webd.min.js"></script>
+        <title>{% block title %}Система Курс{% endblock %}</title>
+    </head>
+    <body>
+        <div id='js_check'>В вашем обозревателе отключен JavaScript либо установлен плагин NoScript. Для корректной работы данного сайта JavaScript необходим.</div>
+        {{header|safe}}
+        <div class="content">
+            <hr/>
+            <h1><a href="/" id="webd_title">Система <span style="color:#0E0EB3;">Курс</span></a></h1>
+            {% block content %}
+            {% endblock %}
+            <hr/>
+        </div>
+        <div class="footer">
+            <div style="width:450px;">
+            <address>
+                <!--i>Замечания по работе сервера: <a href="mailto:webmaster@cs.petrsu.ru">webmaster@cs.karelia.ru</a></i><br/-->
+                <i>Вопросы и замечания по системе Курс: <a href="mailto:chistyak@cs.petrsu.ru">Д.Б.Чистяков</a></i><br/>
+                <i style="display:none">Последние изменения: <span id="webd_last_edited"></span></i>
+            </address>
+            </div>
+            <div style="width:550px; text-align:right; float:right;">
+                <i>Руководитель работы: заведующий кафедрой ИМО, Ю.А.Богоявленский</i><br/>
+                <i>Разработчики: А.А.Андреев, В.М.Димитров</i><br/>
+                <i>Системный администратор: Е.И. Рыбин, В.А. Пономарев</i>
+            </div>
+        </div>
+    </body>
+</html>
