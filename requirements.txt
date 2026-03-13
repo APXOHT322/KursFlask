@@ -5,3 +5,4 @@ flask-sqlalchemy
 pandas
 reportlab
 Werkzeug
+ldap3
