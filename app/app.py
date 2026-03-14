@@ -144,76 +144,13 @@ def create_app():
             # ── Шаг 3: JIT-provisioning ────────────────────────────────────────
             user = _provision_user(ldap_info)
 
-            # ── Шаг 4: если студент без direction — просим выбрать ─────────────
-            if user.has_role('Студент') and not user.direction_id:
-                session['pending_user_id'] = user.id
-                return redirect(url_for('complete_student_profile'))
-
             session['user_id'] = user.id
             return redirect(url_for('dashboard'))
 
         return render_template('login.html')
 
-    @app.route('/complete_profile', methods=['GET', 'POST'])
-    def complete_student_profile():
-        """
-        Страница для студентов, у которых после первого LDAP-входа
-        не удалось автоматически определить direction_id.
-        Студент выбирает направление один раз — потом перенаправляется на dashboard.
-        """
-        user_id = session.get('pending_user_id')
-        if not user_id:
-            return redirect(url_for('login'))
-
-        user       = User.query.get(user_id)
-        directions = Direction.query.order_by(Direction.code, Direction.year).all()
-
-        if request.method == 'POST':
-            direction_id_input    = request.form.get('direction')
-            admission_year_input  = request.form.get('admission_year', '').strip()
-
-            if not direction_id_input or not admission_year_input:
-                return render_template('complete_profile.html',
-                                       user=user,
-                                       directions=directions,
-                                       error='Заполните все поля',
-                                       current_year=datetime.now().year)
-            try:
-                admission_year = int(admission_year_input)
-            except ValueError:
-                return render_template('complete_profile.html',
-                                       user=user,
-                                       directions=directions,
-                                       error='Некорректный год поступления',
-                                       current_year=datetime.now().year)
-
-            # Ищем direction с нужным годом
-            selected = Direction.query.get(direction_id_input)
-            if selected:
-                correct = Direction.query.filter_by(
-                    code=selected.code, year=admission_year
-                ).first()
-                if correct:
-                    direction_id_input = correct.id
-                else:
-                    return render_template('complete_profile.html',
-                                           user=user,
-                                           directions=directions,
-                                           error=f'Для направления "{selected.name}" нет учебного плана {admission_year} года',
-                                           current_year=datetime.now().year)
-
-            user.direction_id   = direction_id_input
-            user.admission_year = admission_year
-            db.session.commit()
-
-            session.pop('pending_user_id', None)
-            session['user_id'] = user.id
-            return redirect(url_for('dashboard'))
-
-        return render_template('complete_profile.html',
-                               user=user,
-                               directions=directions,
-                               current_year=datetime.now().year)
+    # complete_student_profile убран — направление будет назначаться
+    # автоматически по группе в отдельном модуле
 
     @app.route('/logout')
     def logout():
