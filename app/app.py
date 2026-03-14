@@ -56,46 +56,33 @@ def create_app():
 
     # ── Вспомогательная функция: создать/обновить пользователя из LDAP ────────
     def _provision_user(ldap_info: dict) -> User:
-        """
-        JIT-provisioning: при первом входе создаёт пользователя в БД,
-        при повторных — обновляет ФИО из LDAP.
-
-        Пароль не хранится (поле заполняется заглушкой — аутентификация
-        всегда идёт через LDAP).
-        """
         uid  = ldap_info["uid"]
         user = User.query.filter_by(login=uid).first()
 
         if user is None:
-            # ── Первый вход: создаём запись ───────────────────────────────────
-            # Для студентов пытаемся подобрать direction по группе
             direction_id   = None
             group_number   = ldap_info.get("group")
             admission_year = None
 
             if ldap_info["is_student"] and group_number:
                 try:
-                    # Первые две цифры группы — год поступления (напр. "2241" → 2024)
                     year_short     = int(group_number[:2])
                     admission_year = 2000 + year_short
                 except (ValueError, IndexError):
                     admission_year = datetime.now().year
 
             user = User(
-                fio           = ldap_info["fio"],
-                login         = uid,
-                # Пустой хэш — вход через LDAP не требует пароля в БД
-                password      = bcrypt.generate_password_hash("__ldap__").decode("utf-8"),
-                role          = ldap_info["role"],
-                group_number  = group_number,
-                direction_id  = direction_id,
-                admission_year= admission_year,
+                fio            = ldap_info["fio"],
+                login          = uid,
+                password       = bcrypt.generate_password_hash("__ldap__").decode("utf-8"),
+                role           = ldap_info["role"],
+                group_number   = group_number,
+                direction_id   = direction_id,
+                admission_year = admission_year,
             )
             db.session.add(user)
             db.session.commit()
         else:
-            # ── Повторный вход: обновляем ФИО (могло измениться в LDAP) ───────
-            # Роль НЕ обновляем автоматически — администратор мог её изменить в БД
             user.fio = ldap_info["fio"]
             db.session.commit()
 
@@ -130,32 +117,55 @@ def create_app():
             uid      = request.form.get('login', '').strip()
             password = request.form.get('password', '')
 
-            # ── Шаг 1: проверяем пароль через LDAP ────────────────────────────
             if not ldap_authenticate(uid, password):
                 return render_template('login.html',
                                        error="Неверный логин или пароль")
 
-            # ── Шаг 2: получаем атрибуты из LDAP ──────────────────────────────
             ldap_info = ldap_get_user_info(uid)
             if not ldap_info:
                 return render_template('login.html',
                                        error="Не удалось получить данные пользователя из LDAP")
 
-            # ── Шаг 3: JIT-provisioning ────────────────────────────────────────
             user = _provision_user(ldap_info)
-
             session['user_id'] = user.id
             return redirect(url_for('dashboard'))
 
         return render_template('login.html')
 
-    # complete_student_profile убран — направление будет назначаться
-    # автоматически по группе в отдельном модуле
-
     @app.route('/logout')
     def logout():
         session.pop('user_id', None)
         return redirect(url_for('login'))
+
+    # ── SSO: вход по одноразовому токену от Clojure ───────────────────────────
+
+    @app.route('/sso')
+    def sso_login():
+        token = request.args.get('token', '')
+        if not token:
+            return redirect(url_for('login'))
+
+        row = db.session.execute(
+            text("SELECT uid FROM sso_tokens WHERE token=:t AND expires_at > NOW()"),
+            {'t': token}
+        ).fetchone()
+
+        if not row:
+            return render_template('login.html',
+                                   error='Ссылка для входа недействительна или устарела')
+
+        db.session.execute(text("DELETE FROM sso_tokens WHERE token=:t"), {'t': token})
+        db.session.commit()
+
+        uid = row[0]
+        ldap_info = ldap_get_user_info(uid)
+        if not ldap_info:
+            return render_template('login.html',
+                                   error='Не удалось получить данные пользователя')
+
+        user = _provision_user(ldap_info)
+        session['user_id'] = user.id
+        return redirect(url_for('dashboard'))
 
     # ── Управление студентами (специалист дирекции) ───────────────────────────
 
@@ -189,7 +199,7 @@ def create_app():
         assigned = db.session.execute(text("""
             SELECT users.fio, elective_course.name AS course_name
             FROM student_elective_courses
-            JOIN users          ON student_elective_courses.user_id          = users.id
+            JOIN users           ON student_elective_courses.user_id           = users.id
             JOIN elective_course ON student_elective_courses.elective_course_id = elective_course.id
             ORDER BY users.fio
         """)).fetchall()
@@ -203,15 +213,11 @@ def create_app():
         user = User.query.get(session.get('user_id'))
         return render_template('director_dashboard.html', user=user)
 
-    # ── Управление ролями пользователей (только для администратора) ───────────
+    # ── Управление ролями пользователей ──────────────────────────────────────
 
     @app.route('/admin/users')
     @roles_required('Специалист дирекции')
     def admin_users():
-        """
-        Страница для ручного управления ролями пользователей.
-        Роль "Специалист дирекции" можно назначить только здесь.
-        """
         users = User.query.order_by(User.fio).all()
         return render_template('admin_users.html', users=users, available_roles=AVAILABLE_ROLES)
 
