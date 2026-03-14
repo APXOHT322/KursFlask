@@ -34,7 +34,7 @@
   (for [v list]
     {:value v :selected (= v stud-val)}))
 
-(defn page-index [cfg students logged? & [flask-url]]
+(defn page-index [cfg students logged? flask-url]
   (let [years (reverse (sort (set (map :years students))))]
     (selmer/render-file "page_webd.html"
                         {:header      (get-cs)
@@ -45,7 +45,7 @@
                          :logged?     logged?
                          :flask-url   flask-url})))
 
-(defn page-templates [cfg logged? & [flask-url]]
+(defn page-templates [cfg logged? flask-url]
   (selmer/render-file "page_templates.html" {:header         (get-cs)
                                              :logged?        logged?
                                              :page-templates true
@@ -59,7 +59,7 @@
                                          :response response}))
 
 (defn page-identity
-  ([cfg students logged? result & [flask-url]]
+  ([cfg students logged? result flask-url]
    (let [students (reverse (sort-by :years students))
          student (first students)]
      (selmer/render-file "page_identity.html"
@@ -85,7 +85,7 @@
                           :have-prev-year? (= :none (:error (second students)))
                           :study-year      (study-year (:years student "1"))
                           :is-editable?    true})))
-  ([cfg students logged? result username year & [flask-url]]
+  ([cfg students logged? result username year flask-url]
    (let [year (if (string? year) (read-string year) year)
          student1 (first (reverse (sort-by :years students)))
          last-student (if (nil? student1) (first (reverse (sort-by :years (parse/query cfg {:logins username})))))
@@ -135,7 +135,7 @@
 
 (defn page-upload
   ""
-  [cfg student logged? admin? result op for-doc & [flask-url]]
+  [cfg student logged? admin? result op for-doc flask-url]
   (selmer/render-file "page_upload.html"
                       {:header      (get-cs)
                        :logged?     logged?
@@ -249,7 +249,7 @@
       (form-result-default cfg students sort-fn admin?))))
 
 (defn page-query
-  ([cfg students logged? admin? & [flask-url]]
+  ([cfg students logged? admin? flask-url]
    (selmer/render-file "page_query.html" {:header       (get-cs)
                                           :logged?      logged?
                                           :flask-url    flask-url
@@ -259,7 +259,7 @@
                                                                              admin?)})))
 
 (defn page-query-adviser
-  [cfg students logged? admin? & [flask-url]]
+  [cfg students logged? admin? flask-url]
   (selmer/render-file "page_query.html" {:header       (get-cs)
                                          :subtitle     "Ваши студенты:"
                                          :page-adviser true

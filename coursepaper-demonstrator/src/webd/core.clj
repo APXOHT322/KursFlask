@@ -245,8 +245,7 @@
   ([cfg logged? page username result year flask-url]
    (if (= logged? :rstudent)
      (ui/page-identity cfg (parse/query cfg {:logins username :years year})
-                       logged? result
-                       username year flask-url)
+                       logged? result username year flask-url)
      (redirect "/login")))
   ([cfg logged? page username result flask-url]
    (if (= logged? :rstudent)
