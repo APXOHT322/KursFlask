@@ -276,14 +276,14 @@
       "По вашему запросу ничего не найдено.")
     "Не авторизованный доступ"))
 
-(defn- handler-query-get [cfg params logged? admin?]
+(defn- handler-query-get [cfg params logged? admin? flask-url]
   (if logged?
     (if-let [students (seq (query-with-form params cfg))]
       (ui/page-query cfg students logged? admin? flask-url)
       "По вашему запросу ничего не найдено.")
     "Не авторизованный доступ"))
 
-(defn- handler-query-get-advisors-students [cfg uid logged? admin?]
+(defn- handler-query-get-advisors-students [cfg uid logged? admin? flask-url]
   (if logged?
     (let [an (auth/get-sn-ldap cfg uid)]
       (log/info "Adviser name: " an)
@@ -302,11 +302,11 @@
                   {logged? :logged? admin? :admin?} :session}
     (handler-query-post (load-cfg) params logged? admin?))
   (GET "/query" {params                            :params
-                 {logged? :logged? admin? :admin?} :session}
-    (handler-query-get (load-cfg) params logged? admin?))
+                 {logged? :logged? admin? :admin? flask-url :flask-url} :session}
+    (handler-query-get (load-cfg) params logged? admin? flask-url))
   (GET "/query-adviser" {params                                             :params
                          {username :logins logged? :logged? admin? :admin? flask-url :flask-url} :session}
-    (handler-query-get-advisors-students (load-cfg) username logged? admin?))
+    (handler-query-get-advisors-students (load-cfg) username logged? admin? flask-url))
   (POST "/query/report" {params             :params
                          {logged? :logged?} :session}
     (handler-report-post (load-cfg) params logged?))
