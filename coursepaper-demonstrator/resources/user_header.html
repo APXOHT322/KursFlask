@@ -3,8 +3,8 @@
     <a href="/templates" id="templates_link" {% if page-templates %}class="user_no_file" {% endif %}>Шаблоны отчетов и
         презентаций</a>
 
-    <a href="http://localhost:5000" target="_blank">Запись на дисциплины    </a>    
     {% if logged? %}
+    | <a href="{{flask-url}}" target="_blank">Запись на дисциплины</a>
     |
     {% ifequal logged? :rstudent %}
     <a href="/user/identity" id="identity_link" {% if page-identity %}class="user_no_file" {% endif %}>Регистрация
@@ -15,6 +15,7 @@
     {% endifequal %}
     <a href="/login/exit">Выход</a>
     {% else %}
+    <a href="http://localhost:5000" target="_blank">Запись на дисциплины</a>
     <div style="margin-top:10px">
         <span>Вход:</span>
         <form id="webd_login_form" action="/login" method="POST" style="display:inline"
