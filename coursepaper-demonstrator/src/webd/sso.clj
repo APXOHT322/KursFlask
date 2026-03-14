@@ -6,17 +6,12 @@
   (:import [java.util UUID]
            [java.time LocalDateTime]))
 
-;; ── Конфигурация БД ──────────────────────────────────────────────────────────
+;; ── Конфигурация БД через прямой JDBC URL ────────────────────────────────────
 (def ^:private db-spec
-  {:dbtype   "mariadb"
-   :dbname   "Kurs"
-   :host     "localhost"
-   :port     3306
-   :user     "root"
-   :password "OoRa2Oob"})
+  {:connection-uri "jdbc:mariadb://localhost:3306/Kurs?user=root&password=OoRa2Oob"})
 
 ;; ── URL приложений ────────────────────────────────────────────────────────────
-(def ^:private flask-url "http://localhost:5000")
+(def ^:private flask-base-url "http://localhost:5000")
 
 ;; ── Генерация токена (Clojure → Flask) ───────────────────────────────────────
 
@@ -40,14 +35,13 @@
   "Возвращает URL Flask с SSO-токеном для пользователя uid."
   [uid]
   (if-let [token (create-sso-token! uid)]
-    (str flask-url "/sso?token=" token)
-    (str flask-url "/login")))
+    (str flask-base-url "/sso?token=" token)
+    (str flask-base-url "/login")))
 
 ;; ── Валидация токена (Flask → Clojure) ────────────────────────────────────────
 
 (defn validate-sso-token!
-  "Проверяет токен в БД. Если валидный и не просроченный —
-   удаляет его (одноразовый) и возвращает uid. Иначе nil."
+  "Проверяет токен в БД. Если валидный — удаляет и возвращает uid. Иначе nil."
   [token]
   (when (and token (not (empty? token)))
     (try
