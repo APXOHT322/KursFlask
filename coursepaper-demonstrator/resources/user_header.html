@@ -4,7 +4,11 @@
         презентаций</a>
 
     {% if logged? %}
-    | <a href="{{flask-url}}" target="_blank">Запись на дисциплины</a>
+    |
+    <!-- Если SSO-токен сгенерирован — используем его, иначе просто ссылка на Flask -->
+    <a href="{% if flask-url %}{{flask-url}}{% else %}http://localhost:5000{% endif %}" target="_blank">
+        Запись на дисциплины
+    </a>
     |
     {% ifequal logged? :rstudent %}
     <a href="/user/identity" id="identity_link" {% if page-identity %}class="user_no_file" {% endif %}>Регистрация
@@ -22,11 +26,9 @@
               title="После авторизации доступно: регистрация работ, изменение личных данных, добавление и удаление файлов отчетов">
             <input placeholder="Имя пользователя" type="text" name="username"
                    id="inp_username" class="inp txt_inp" maxlength="15"
-                   title="Вход доступен с помощью логина и пароля студента в сервисах кафедры ИМО (например, сервер kappa или сервис moodle)"
                    autofocus/>
             <input placeholder="Пароль" type="password" name="password"
-                   id="inp_password" class="inp txt_inp" maxlength="15"
-                   title="Вход доступен с помощью логина и пароля студента в сервисах кафедры ИМО (например, сервер kappa или сервис moodle)"/>
+                   id="inp_password" class="inp txt_inp" maxlength="15"/>
             <input type="submit" id="btn_login" value="Войти" class="inp"/>
             <div id="login_response">{{response}}</div>
         </form>
