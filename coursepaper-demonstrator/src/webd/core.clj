@@ -12,7 +12,8 @@
                   [doc :as doc]
                   [files :as wf]
                   [auth :as auth]
-                  [ui :as ui])
+                  [ui :as ui]
+                  [sso :as sso])
             (ring.util [io :as rio])
             [clojure.java.io :as io]
             [clojure.tools.logging :as log]
@@ -117,17 +118,19 @@
 (defn- handler-login-post [cfg session username password]
   (log/info username " tried to log in")
   (let [correct? (auth/login? cfg username password)
-        admin? (auth/login-test? cfg username password)
-        student (parse/get-student cfg {:logins username})
-        gn (or (auth/get-group-ldap cfg username) (:groups student))
+        admin?   (auth/login-test? cfg username password)
+        student  (parse/get-student cfg {:logins username})
+        gn       (or (auth/get-group-ldap cfg username) (:groups student))
         initialized (when (or (and correct? gn #_(not student) (not= (:groups student) gn))
                               (and correct? gn student))    ;;TODO: delete after 2020
                       (wf/init-directory-structure! cfg username gn))
-        cleared (when initialized (parse/clear-cache))
-        student (parse/get-student cfg {:logins username})
-        ]
+        cleared  (when initialized (parse/clear-cache))
+        student  (parse/get-student cfg {:logins username})
+        ;; Генерируем SSO-токен для Flask только при успешном входе
+        flask-url (when correct? (sso/flask-sso-url username))]
     (log/info "admin logged in?" admin?)
     (log/info "log in registered" student gn initialized)
+    (log/info "flask-url for" username "is" flask-url)
     (-> (redirect (if (and correct? student) "/user/identity"
                                              (if correct?
                                                ;user is a lecturer, query for his students
@@ -135,8 +138,9 @@
                                                "/login?fail=t")))
         (assoc :session
                (merge session
-                      {:logged? (if correct? (if student :rstudent :rother) false)
-                       :admin?  admin?}
+                      {:logged?   (if correct? (if student :rstudent :rother) false)
+                       :admin?    admin?
+                       :flask-url flask-url}
                       (student-identifiers student)
                       {:logins username})))))
 
@@ -191,7 +195,6 @@
     {:status  200
      :headers {"Content-Type" "application/pdf"}
      :body    (rio/piped-input-stream
-                ;; to transfer a file
                 (partial doc/to-pdf
                          (query-with-form params cfg)
                          (:pdf-table-struct cfg)
@@ -205,7 +208,6 @@
     {:status  200
      :headers {"Content-Type" "application/pdf"}
      :body    (rio/piped-input-stream
-                ;; to transfer a file
                 (partial doc/to-pdf-missing
                          (parse/get-not-registered-users-with-ldap cfg groups)
                          (:current-year cfg)))}
@@ -217,7 +219,6 @@
     {:status  200
      :headers {"Content-Type" "application/rtf"}
      :body    (rio/piped-input-stream
-                ;; to transfer a file
                 (partial doc/rtf-directive
                          cfg
                          (query-with-form params cfg)))}
@@ -241,30 +242,29 @@
     (redirect "/login")))
 
 (defn- handler-identity-get
-  ([cfg logged? page username result year]
+  ([cfg logged? page username result year flask-url]
    (if (= logged? :rstudent)
      (ui/page-identity cfg (parse/query cfg {:logins username :years year})
                        logged? result
-                       username year)
+                       username year flask-url)
      (redirect "/login")))
-  ([cfg logged? page username result]
+  ([cfg logged? page username result flask-url]
    (if (= logged? :rstudent)
      (ui/page-identity cfg (parse/query cfg {:logins username})
-                       logged? result)
+                       logged? result flask-url)
      (redirect "/login"))))
 
 (defn- handler-file-get [cfg logged? admin? page user-params {result  :result
                                                               for-doc :for-doc
-                                                              op      :operation}]
+                                                              op      :operation} flask-url]
   (log/info user-params)
   (if (= logged? :rstudent)
     (let [std (parse/get-student cfg user-params)]
       (if (nil? std)
         (redirect "/user/identity")
         (ui/page-upload cfg (parse/get-student cfg user-params)
-                        logged? admin? result op for-doc)))
+                        logged? admin? result op for-doc flask-url)))
     (redirect "/login")))
-
 
 (defn- handler-query-post [cfg {sort-method  :sort-method
                                 sort-order   :sort-order
@@ -280,7 +280,7 @@
 (defn- handler-query-get [cfg params logged? admin?]
   (if logged?
     (if-let [students (seq (query-with-form params cfg))]
-      (ui/page-query cfg students logged? admin?)
+      (ui/page-query cfg students logged? admin? flask-url)
       "По вашему запросу ничего не найдено.")
     "Не авторизованный доступ"))
 
@@ -289,16 +289,16 @@
     (let [an (auth/get-sn-ldap cfg uid)]
       (log/info "Adviser name: " an)
       (if-let [students (seq (if an (query-with-form {:adviser-name an} cfg) []))]
-        (ui/page-query-adviser cfg students logged? admin?)
+        (ui/page-query-adviser cfg students logged? admin? flask-url)
         (redirect "/")))
     "Не авторизованный доступ"))
 
 (defroutes
   router
   "Routing function for webd with all routes described."
-  (GET "/" {{logged? :logged?} :session}
+  (GET "/" {{logged? :logged? flask-url :flask-url} :session}
     (let [cfg (load-cfg)]
-      (ui/page-index cfg (if logged? (parse/query cfg {}) []) logged?)))
+      (ui/page-index cfg (if logged? (parse/query cfg {}) []) logged? flask-url)))
   (POST "/query" {params                            :params
                   {logged? :logged? admin? :admin?} :session}
     (handler-query-post (load-cfg) params logged? admin?))
@@ -306,7 +306,7 @@
                  {logged? :logged? admin? :admin?} :session}
     (handler-query-get (load-cfg) params logged? admin?))
   (GET "/query-adviser" {params                                             :params
-                         {username :logins logged? :logged? admin? :admin?} :session}
+                         {username :logins logged? :logged? admin? :admin? flask-url :flask-url} :session}
     (handler-query-get-advisors-students (load-cfg) username logged? admin?))
   (POST "/query/report" {params             :params
                          {logged? :logged?} :session}
@@ -317,8 +317,8 @@
   (POST "/query/directive" {params             :params
                             {logged? :logged?} :session}
     (handler-directive-post (load-cfg) params logged?))
-  (GET "/templates" {{logged? :logged?} :session}
-    (ui/page-templates (load-cfg) logged?))
+  (GET "/templates" {{logged? :logged? flask-url :flask-url} :session}
+    (ui/page-templates (load-cfg) logged? flask-url))
   (GET "/login" {{fail? :fail}      :params
                  {logged? :logged?} :session}
     (handler-login-get (load-cfg) logged? fail?))
@@ -332,16 +332,16 @@
   (POST "/login" {{username :username password :password} :params
                   session                                 :session}
     (handler-login-post (load-cfg) session username password))
-  (GET "/user/identity" {{username :logins logged? :logged?} :session
+  (GET "/user/identity" {{username :logins logged? :logged? flask-url :flask-url} :session
                          {result :result}                    :params}
-    (handler-identity-get (load-cfg) logged? :identity username result))
+    (handler-identity-get (load-cfg) logged? :identity username result flask-url))
   (POST "/user/identity" {params                         :params
                           {logged? :logged? :as session} :session}
     (handler-identity-post (load-cfg) params logged?
                            (student-identifiers session) false))
-  (GET "/user/identity/:year" {{username :logins logged? :logged?} :session
+  (GET "/user/identity/:year" {{username :logins logged? :logged? flask-url :flask-url} :session
                                {result :result year :year}         :params}
-    (handler-identity-get (load-cfg) logged? :identity username result year))
+    (handler-identity-get (load-cfg) logged? :identity username result year flask-url))
   (POST "/user/identity/:year" {{year :year :as params}        :params
                                 {logged? :logged? :as session} :session}
     (handler-identity-post (load-cfg) params logged?
@@ -351,15 +351,15 @@
     (handler-identity-post (load-cfg) params logged?
                            (student-identifiers session) true))
   (GET "/user/file/" {} (redirect "/user/file"))
-  (GET "/user/file" {{logged? :logged? admin? :admin? :as session} :session
+  (GET "/user/file" {{logged? :logged? admin? :admin? flask-url :flask-url :as session} :session
                      params                                        :params}
     (handler-file-get (load-cfg) logged? admin? :upload
-                      (student-identifiers session) params))
-  (GET "/user/file/:year" {{logged? :logged? admin? :admin? :as session} :session
+                      (student-identifiers session) params flask-url))
+  (GET "/user/file/:year" {{logged? :logged? admin? :admin? flask-url :flask-url :as session} :session
                            {year :year :as params}                       :params}
     (handler-file-get (load-cfg) logged? admin? :upload
                       (student-identifiers session year)
-                      params))
+                      params flask-url))
   (POST "/user/file/:year/upload" {{year :year :as params}        :params
                                    {logged? :logged? :as session} :session}
     (handler-file-post (load-cfg) params logged?
