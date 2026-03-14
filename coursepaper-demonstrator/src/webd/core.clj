@@ -376,7 +376,24 @@
                              {logged? :logged? :as session} :session}
     (handler-file-post (load-cfg) params logged?
                        (student-identifiers session) "save-file"))
-  (croute/resources "/")
+  (GET "/sso" {{token :token} :params session :session}
+    (let [uid (webd.sso/validate-sso-token! token)]
+      (if uid
+        (let [cfg    (load-cfg)
+              student (parse/get-student cfg {:logins uid})
+              gn      (or (auth/get-group-ldap cfg uid) (:groups student))
+              flask-url (webd.sso/flask-sso-url uid)]
+          (-> (redirect (if student "/user/identity" "/"))
+              (assoc :session
+                     {:logged?   (if student :rstudent :rother)
+                      :admin?    false
+                      :flask-url flask-url
+                      :logins    uid
+                      :years     (:years student)
+                      :courses   (:courses student)
+                      :groups    (or gn (:groups student))})))
+        (redirect "/login?fail=t"))))
+    (croute/resources "/")
   (croute/not-found "not found"))
 
 (defn destroy []
