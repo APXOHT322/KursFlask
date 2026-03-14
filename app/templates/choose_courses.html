@@ -2,7 +2,13 @@
 
 {% block content %}
     <div class="container">
-        <h2 class="page-title">Доступные дисциплины по выбору</h2>
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <h2 class="page-title">Доступные дисциплины по выбору</h2>
+            <a href="http://localhost:3000/" 
+               style="text-decoration: none; border: 1px solid #0000EE; padding: 5px 10px; border-radius: 5px;">
+                ← Система Курс
+            </a>
+        </div>
 
         <div class="user-info">
             <p><strong>ФИО:</strong> {{ user.fio }}</p>
@@ -65,7 +71,7 @@
             </form>
         {% endif %}
 
-        <div class="logout-section">
+        <div class="logout-section" style="margin-top: 20px;">
             <a href="{{ url_for('logout') }}" class="logout-link">Выйти</a>
         </div>
     </div>

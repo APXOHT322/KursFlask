@@ -5,6 +5,9 @@
 {% block content %}
 <div class="login-container">
     <h2>Вход в систему</h2>
+    {% if error %}
+        <p style="color:red;">{{ error }}</p>
+    {% endif %}
     <form action="/login" method="POST" class="login-form">
         <div class="form-group">
             <label for="login">Логин:</label>
@@ -16,11 +19,10 @@
         </div>
         <div class="button-group">
             <button type="submit">Войти</button>
-            <button type="button" onclick="window.location.href='http://localhost:3000/'">Назад</button>
+            <button type="button" onclick="window.location.href='http://localhost:3000/'">
+                ← Вернуться в систему Курс
+            </button>
         </div>
     </form>
-    <div class="register-link">
-        <a href="/register">Регистрация</a>
-    </div>
 </div>
 {% endblock %}

@@ -3,10 +3,16 @@
 {% block content %}
   <header style="display: flex; justify-content: space-between; align-items: center;">
     <h1>Привет, {{ user.fio }}</h1>
-    <!-- Кнопка выхода -->
-    <a href="{{ url_for('logout') }}" style="color: red; text-decoration: none; border: 1px solid red; padding: 5px 10px; border-radius: 5px;">
-      Выйти
-    </a>
+    <div>
+      <a href="http://localhost:3000/" 
+         style="text-decoration: none; border: 1px solid #0000EE; padding: 5px 10px; border-radius: 5px; margin-right: 10px;">
+        ← Система Курс
+      </a>
+      <a href="{{ url_for('logout') }}" 
+         style="color: red; text-decoration: none; border: 1px solid red; padding: 5px 10px; border-radius: 5px;">
+        Выйти
+      </a>
+    </div>
   </header>
 
   <hr>
