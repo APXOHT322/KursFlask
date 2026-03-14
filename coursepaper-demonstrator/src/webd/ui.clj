@@ -34,7 +34,7 @@
   (for [v list]
     {:value v :selected (= v stud-val)}))
 
-(defn page-index [cfg students logged?]
+(defn page-index [cfg students logged? & [flask-url]]
   (let [years (reverse (sort (set (map :years students))))]
     (selmer/render-file "page_webd.html"
                         {:header      (get-cs)
@@ -42,12 +42,14 @@
                          :last-year   (first years)
                          :groups      (sort (set (map :groups students)))
                          :departments (:departments cfg)
-                         :logged?     logged?})))
+                         :logged?     logged?
+                         :flask-url   flask-url})))
 
-(defn page-templates [cfg logged?]
+(defn page-templates [cfg logged? & [flask-url]]
   (selmer/render-file "page_templates.html" {:header         (get-cs)
                                              :logged?        logged?
-                                             :page-templates true}))
+                                             :page-templates true
+                                             :flask-url      flask-url}))
 
 (defn page-login
   ""
@@ -57,12 +59,13 @@
                                          :response response}))
 
 (defn page-identity
-  ([cfg students logged? result]
+  ([cfg students logged? result & [flask-url]]
    (let [students (reverse (sort-by :years students))
          student (first students)]
      (selmer/render-file "page_identity.html"
                          {:header          (get-cs)
                           :logged?         logged?
+                          :flask-url       flask-url
                           :student         student
                           :page-identity   true
                           :success?        (= result "true")
@@ -82,7 +85,7 @@
                           :have-prev-year? (= :none (:error (second students)))
                           :study-year      (study-year (:years student "1"))
                           :is-editable?    true})))
-  ([cfg students logged? result username year]
+  ([cfg students logged? result username year & [flask-url]]
    (let [year (if (string? year) (read-string year) year)
          student1 (first (reverse (sort-by :years students)))
          last-student (if (nil? student1) (first (reverse (sort-by :years (parse/query cfg {:logins username})))))
@@ -109,6 +112,7 @@
      (selmer/render-file "page_identity.html"
                          {:header          (get-cs)
                           :logged?         logged?
+                          :flask-url       flask-url
                           :student         student
                           :page-identity   true
                           :success?        (= result "true")
@@ -131,10 +135,11 @@
 
 (defn page-upload
   ""
-  [cfg student logged? admin? result op for-doc]
+  [cfg student logged? admin? result op for-doc & [flask-url]]
   (selmer/render-file "page_upload.html"
                       {:header      (get-cs)
                        :logged?     logged?
+                       :flask-url   flask-url
                        :admin?      admin?
                        :student     student
                        :page-upload true
@@ -147,7 +152,7 @@
                                          :name     (condp = f
                                                      :int-report "Промежуточный отчет"
                                                      :int-slides "Промежуточная презентация"
-                                                     :fin-report (if (.contains files :fin-antiplagiat) "Текст ВКР" "Окончательный отчет") ;fixme: make more reliable
+                                                     :fin-report (if (.contains files :fin-antiplagiat) "Текст ВКР" "Окончательный отчет")
                                                      :fin-slides (if (.contains files :fin-antiplagiat) "Презентация ВКР" "Окончательная презентация")
                                                      :fin-review "Рецензия"
                                                      :fin-sup-review "Отзыв руководителя"
@@ -159,18 +164,10 @@
                                          :success? (= result "true")
                                          :result   (when (= for-doc (name f))
                                                      (condp = result
-                                                       "true" (str #_"Файл успешно "
-                                                                (if (= "save-file" op)
-                                                                  "Загружено" "Удалено"))
-                                                       "false" (str "Ошибка при "
-                                                                    (if (= "save-file" op)
-                                                                      "загрузке" "удалении")
-                                                                    " файла!")
-                                                       "413" (str "Ошибка при загрузке файла: "
-                                                                  " недопустимы файлы размером"
-                                                                  " более 10мб!")
-                                                       "enotpdf" (str "Загруженный файл имеет"
-                                                                      " недопустимый формат")
+                                                       "true" (str (if (= "save-file" op) "Загружено" "Удалено"))
+                                                       "false" (str "Ошибка при " (if (= "save-file" op) "загрузке" "удалении") " файла!")
+                                                       "413" "Ошибка при загрузке файла: недопустимы файлы размером более 10мб!"
+                                                       "enotpdf" "Загруженный файл имеет недопустимый формат"
                                                        nil))}))
                        }))
 
@@ -213,14 +210,12 @@
                          :fin-sup-review  "Отзыв<br/>руковод."
                          :fin-antiplagiat "Проверка на<br/>плагиат"
                          :fin-preport     "Отчет по<br/>практике<br/>НИР"}]
-         (selmer/render-file "result-table.html" {:admin? admin?
-                                                  :students
-                                                          (map (fn [student] (assoc student :sfiles (map (fn [filekw] {:name (file-names filekw) :kw filekw :file (filekw student)}) file-set)))
+         (selmer/render-file "result-table.html" {:admin?   admin?
+                                                  :students (map (fn [student] (assoc student :sfiles (map (fn [filekw] {:name (file-names filekw) :kw filekw :file (filekw student)}) file-set)))
                                                                (map-indexed
                                                                  (partial format-student cfg)
                                                                  (sort-fn students)))
-                                                  :files  (map (fn [filekw] {:name (file-names filekw) :kw filekw}) file-set)
-                                                  }))))
+                                                  :files    (map (fn [filekw] {:name (file-names filekw) :kw filekw}) file-set)}))))
 
 (defn form-result-default [cfg students sort-fn admin?]
   (s/join
@@ -254,22 +249,22 @@
       (form-result-default cfg students sort-fn admin?))))
 
 (defn page-query
-  ([cfg students logged? admin?]
-   (selmer/render-file "page_query.html" {:header  (get-cs)
-                                          :logged? logged?
-                                          :admin?  :admin?
-                                          :query-result
-                                                   (form-result-default cfg students
-                                                                        (get-sort-fn :by-student-name :ascending)
-                                                                        admin?)})))
+  ([cfg students logged? admin? & [flask-url]]
+   (selmer/render-file "page_query.html" {:header       (get-cs)
+                                          :logged?      logged?
+                                          :flask-url    flask-url
+                                          :admin?       admin?
+                                          :query-result (form-result-default cfg students
+                                                                             (get-sort-fn :by-student-name :ascending)
+                                                                             admin?)})))
 
 (defn page-query-adviser
-  [cfg students logged? admin?]
+  [cfg students logged? admin? & [flask-url]]
   (selmer/render-file "page_query.html" {:header       (get-cs)
                                          :subtitle     "Ваши студенты:"
                                          :page-adviser true
                                          :logged?      logged?
-                                         :query-result
-                                                       (form-result-default cfg students
+                                         :flask-url    flask-url
+                                         :query-result (form-result-default cfg students
                                                                             (get-sort-fn :by-student-name :ascending)
                                                                             admin?)}))
