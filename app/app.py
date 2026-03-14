@@ -167,6 +167,37 @@ def create_app():
         session['user_id'] = user.id
         return redirect(url_for('dashboard'))
 
+
+    # ── SSO: переход из Flask обратно в Clojure ───────────────────────────────
+
+    @app.route('/goto/kurs')
+    def goto_kurs():
+        """
+        Генерирует SSO-токен и перенаправляет пользователя в Clojure-приложение.
+        Используется кнопкой "← Система Курс" на dashboard и других страницах.
+        """
+        user_id = session.get('user_id')
+        if not user_id:
+            return redirect('http://localhost:3000/')
+
+        user = User.query.get(user_id)
+        if not user:
+            return redirect('http://localhost:3000/')
+
+        import secrets
+        from datetime import timedelta
+
+        token = secrets.token_hex(32)
+        expires_at = datetime.now() + timedelta(minutes=2)
+
+        db.session.execute(
+            text("INSERT INTO sso_tokens (token, uid, expires_at) VALUES (:t, :u, :e)"),
+            {'t': token, 'u': user.login, 'e': expires_at}
+        )
+        db.session.commit()
+
+        return redirect(f'http://localhost:3000/sso?token={token}')
+
     # ── Управление студентами (специалист дирекции) ───────────────────────────
 
     @app.route('/manage_students_courses', methods=['GET', 'POST'])
