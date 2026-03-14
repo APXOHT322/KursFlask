@@ -4,11 +4,11 @@
   <header style="display: flex; justify-content: space-between; align-items: center;">
     <h1>Привет, {{ user.fio }}</h1>
     <div>
-      <a href="http://localhost:3000/" 
+      <a href="{{ url_for('goto_kurs') }}"
          style="text-decoration: none; border: 1px solid #0000EE; padding: 5px 10px; border-radius: 5px; margin-right: 10px;">
         ← Система Курс
       </a>
-      <a href="{{ url_for('logout') }}" 
+      <a href="{{ url_for('logout') }}"
          style="color: red; text-decoration: none; border: 1px solid red; padding: 5px 10px; border-radius: 5px;">
         Выйти
       </a>
