@@ -19,39 +19,31 @@
 {% endwith %}
 
 <div class="action-buttons">
+    <div class="left-button">
+      <form method="POST" action="{{ url_for('manage_courses_bp.toggle_enrollment') }}">
+        <button type="submit" class="btn btn-primary">
+          {% if settings and settings.is_enrollment_open %}
+            Закрыть запись на дисциплины
+          {% else %}
+            Открыть запись на дисциплины
+          {% endif %}
+        </button>
+      </form>
+    </div>
+  
+    <div class="right-button">
+    
 
-  <!-- Открыть/закрыть запись -->
-  <div class="left-button">
-    <form method="POST" action="{{ url_for('manage_courses_bp.toggle_enrollment') }}">
-      <button type="submit" class="btn btn-primary">
-        {% if settings and settings.is_enrollment_open %}
-          Закрыть запись на дисциплины
-        {% else %}
-          Открыть запись на дисциплины
-        {% endif %}
-      </button>
-    </form>
-  </div>
-
-  <!-- Ручная загрузка файла (XLS / XLSX / PDF) -->
-  <div class="right-button">
-    <form action="{{ url_for('manage_courses_bp.upload_plan') }}" method="post"
-          enctype="multipart/form-data" class="upload-form mb-2">
-      <input type="file" name="plan_file" accept=".xls,.xlsx,.pdf" required>
-      <button type="submit" class="btn btn-secondary mt-2">Загрузить учебный план</button>
-    </form>
-
-    <!-- Автозагрузка с платформы -->
+    <!-- 🔥 НОВАЯ кнопка -->
     <form method="POST" action="{{ url_for('manage_courses_bp.update_plans') }}">
       <button type="submit" class="btn btn-warning mt-2">
-        Обновить учебные планы с платформы
+        Обновить учебные планы
       </button>
     </form>
-  </div>
 
+  </div>
 </div>
 
-<!-- Фильтр по направлению -->
 <div class="filter-section">
   <h2>Фильтровать дисциплины по направлению</h2>
   <form method="GET" action="{{ url_for('manage_courses_bp.manage_courses') }}">
@@ -59,8 +51,7 @@
       <select name="direction_filter" id="direction_filter">
           <option value="">Все направления</option>
           {% for direction in directions %}
-              <option value="{{ direction.id }}"
-                {% if direction.id == selected_direction_id %}selected{% endif %}>
+              <option value="{{ direction.id }}" {% if direction.id == selected_direction_id %}selected{% endif %}>
                   {{ direction.name }} ({{ direction.year }} год)
               </option>
           {% endfor %}
@@ -70,6 +61,9 @@
 </div>
 
 {% if elective_courses %}
+    {# Убрал кнопку удаления всех дисциплин #}
+    
+    {# Группируем дисциплины по направлению и году #}
     {% set grouped_courses = {} %}
     {% for course in elective_courses %}
         {% set direction_key = course.direction.code ~ " - " ~ course.direction.name ~ " (" ~ course.direction.year ~ " год)" %}
@@ -78,9 +72,10 @@
         {% endif %}
         {% set _ = grouped_courses[direction_key].append(course) %}
     {% endfor %}
-
+    
+    {# Сортируем по коду направления и году #}
     {% set sorted_directions = grouped_courses.keys()|sort %}
-
+    
     {% for direction_name in sorted_directions %}
         {% set courses_list = grouped_courses[direction_name] %}
         <h2>{{ direction_name }}</h2>
@@ -103,8 +98,7 @@
     {% endfor %}
 {% else %}
     <div class="alert alert-info">
-        <p>Нет загруженных дисциплин. Загрузите учебный план вручную или нажмите
-           "Обновить учебные планы с платформы".</p>
+        <p>Нет загруженных дисциплин. Нажмите "Обновить учебные планы", чтобы увидеть дисциплины по выбору.</p>
     </div>
 {% endif %}
 
@@ -115,3 +109,4 @@
     <a href="{{ url_for('logout') }}" class="btn btn-link">Выйти</a>
 </div>
 {% endblock %}
+
