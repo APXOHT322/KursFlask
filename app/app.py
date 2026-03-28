@@ -138,10 +138,14 @@ def create_app():
         return redirect(url_for('login'))
 
     # ── SSO: вход по одноразовому токену от Clojure ───────────────────────────
-
+    # ИСПРАВЛЕНИЕ: добавлен параметр ?next= для редиректа после успешного входа.
+    # Clojure генерирует токен прямо в момент перехода (роут /goto/flask),
+    # поэтому 2-минутный TTL не успевает истечь.
     @app.route('/sso')
     def sso_login():
-        token = request.args.get('token', '')
+        token    = request.args.get('token', '')
+        next_url = request.args.get('next', '')   # путь для редиректа после входа
+
         if not token:
             return redirect(url_for('login'))
 
@@ -165,11 +169,14 @@ def create_app():
 
         user = _provision_user(ldap_info)
         session['user_id'] = user.id
+
+        # Безопасный редирект: принимаем только внутренние пути (начинаются с /)
+        if next_url and next_url.startswith('/'):
+            return redirect(next_url)
         return redirect(url_for('dashboard'))
 
-
     # ── SSO: переход из Flask обратно в Clojure ───────────────────────────────
-
+    # Токен генерируется прямо здесь, непосредственно перед редиректом.
     @app.route('/goto/kurs')
     def goto_kurs():
         """
