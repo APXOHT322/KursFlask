@@ -471,7 +471,7 @@ def get_driver():
     options.add_argument("--single-process")
 
     return webdriver.Chrome(
-        service = Service(ChromeDriverManager(version="146.0.7680.80").install()),
+        service = Service(ChromeDriverManager(driver_version="146.0.7680.80").install()),
         options=options
     )
 
