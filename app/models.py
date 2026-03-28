@@ -85,6 +85,7 @@ class Direction(db.Model):
     code = db.Column(db.String(20), nullable=False)  # Убрано unique=True
     name = db.Column(db.String(100), nullable=False)
     year = db.Column(db.Integer, nullable=True)  # Год учебного плана
+    degree = db.Column(db.String(20))   # или db.String(50) — как в базе
     elective_courses = db.relationship('ElectiveCourse', backref='direction', lazy=True)
     
     # Составной уникальный ключ (code + year)
