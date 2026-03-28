@@ -1,147 +1,397 @@
 import os
 import re
-import time
-
 from flask import Blueprint, render_template, redirect, url_for, session, request, flash
 from werkzeug.utils import secure_filename
 from app.models import User, Direction, ElectiveCourse, Settings, StudentElectiveCourse, db
-import pandas as pd
-
-# PDF-парсинг (новый модуль)
-try:
-    import pdfplumber
-    PDF_AVAILABLE = True
-except ImportError:
-    PDF_AVAILABLE = False
-
-# Selenium (новый модуль — автозагрузка с платформы)
-try:
-    import requests as http_requests
-    from selenium import webdriver
-    from selenium.webdriver.common.by import By
-    from selenium.webdriver.chrome.options import Options
-    from selenium.webdriver.chrome.service import Service
-    from webdriver_manager.chrome import ChromeDriverManager
-    SELENIUM_AVAILABLE = True
-except ImportError:
-    SELENIUM_AVAILABLE = False
+import pdfplumber
+import requests
+from selenium import webdriver
+from selenium.webdriver.common.by import By
+from selenium.webdriver.chrome.options import Options
+import time
 
 manage_courses_bp = Blueprint('manage_courses_bp', __name__)
 
 UPLOAD_FOLDER = 'uploads'
-ALLOWED_EXTENSIONS = {'xls', 'xlsx', 'pdf'}
+ALLOWED_EXTENSIONS = {'pdf'}
 
-# URL закрытой платформы с учебными планами
-PLATFORM_URL = "https://umk:ytrewq@math-it.petrsu.ru/umk/UMK_MF/UP_RUP.html"
-
-# Маппинг колонок PDF на семестры
+# Маппинг колонок таблицы PDF на номера семестров.
+# Структура таблицы в PDF аналогична Excel:
+# col_index 9 = 1-й сем, col_index 10 = 2-й сем, ..., col_index 16 = 8-й сем
 SEMESTER_COLS = {9: 1, 10: 2, 11: 3, 12: 4, 13: 5, 14: 6, 15: 7, 16: 8}
 
-
-# ── Общие утилиты ─────────────────────────────────────────────────────────────
 
 def extract_year_from_filename(filename):
     """Извлекает год из названия файла (например: UP_ISIT_2023.pdf -> 2023)"""
     match = re.search(r'(\d{4})', filename)
-    return int(match.group(1)) if match else None
+    if match:
+        return int(match.group(1))
+    return None
 
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 
-# ── Обработка Excel (оригинальная логика) ─────────────────────────────────────
+def normalize_cell(value):
+    """Приводит значение ячейки таблицы к строке, убирает пробелы."""
+    if value is None:
+        return ''
+    return str(value).strip()
 
-def find_elective_disciplines_excel(excel_file, sheet_name, start_phrase):
-    """Ищет дисциплины по выбору в Excel файле."""
+
+def is_positive_number(value):
+    """Проверяет, является ли значение положительным числом (для определения семестра)."""
     try:
-        df = pd.read_excel(excel_file, sheet_name=sheet_name)
-    except Exception as e:
-        print(f"Ошибка при чтении Excel: {e}")
-        return []
+        return float(value) > 0
+    except (ValueError, TypeError):
+        return False
 
+
+def get_semesters_for_row(row):
+    """
+    Возвращает список номеров семестров для строки таблицы PDF
+    по значениям в колонках с индексами 9–16.
+    """
+    semesters = []
+    for col_index, sem_number in SEMESTER_COLS.items():
+        if col_index < len(row):
+            val = normalize_cell(row[col_index])
+            if val and val not in ('nan', '0', '') and is_positive_number(val):
+                semesters.append(sem_number)
+    return semesters
+
+
+def extract_all_rows_from_pdf(filepath):
+    """
+    Извлекает текст из PDF и разбивает его на логические строки.
+    """
+    lines = []
+
+    with pdfplumber.open(filepath) as pdf:
+        for page in pdf.pages:
+            text = page.extract_text()
+            if not text:
+                continue
+
+            page_lines = text.split('\n')
+
+            for line in page_lines:
+                clean_line = line.strip()
+                if clean_line:
+                    lines.append(clean_line)
+
+    return lines
+
+
+def find_direction_info(all_lines):
+    pattern = re.compile(r'(\d{2}\.\d{2}\.\d{2})\s*-\s*(.+)')
+
+    for line in all_lines:
+        match = pattern.search(line)
+        if match:
+            return match.group(1), match.group(2).strip()
+
+    return None, None
+
+
+def find_elective_disciplines_from_rows(all_lines, start_phrase):
     elective_disciplines = []
-    start_row = None
 
-    for index, row in df.iterrows():
-        for cell in row:
-            if isinstance(cell, str) and start_phrase in cell:
-                start_row = index
-                break
-        if start_row is not None:
+    STOP_PHRASES = [
+        "Б1.В.ФК",
+        "Физическая культура (элек.)"
+    ]
+
+    start_index = None
+
+    # ищем начало блока
+    for i, line in enumerate(all_lines):
+        if start_phrase in line:
+            start_index = i
             break
 
-    if start_row is None:
+    if start_index is None:
         return []
 
-    current_row = start_row + 1
-    while current_row < len(df):
-        discipline_name = df.iloc[current_row, 0]
-        if not isinstance(discipline_name, str) or not discipline_name.strip():
+    i = start_index + 1
+
+    while i < len(all_lines):
+        line = all_lines[i]
+
+        # стоп-блок
+        if any(stop in line for stop in STOP_PHRASES):
             break
 
-        semesters = []
-        for semester_column in range(3, 11):
-            semester_value = df.iloc[current_row, semester_column]
-            if pd.notna(semester_value):
-                semesters.append(semester_column - 2)
+        # пропускаем заголовки
+        if "Дисциплины по выбору" in line:
+            i += 1
+            continue
 
-        elective_disciplines.append({"name": discipline_name, "semesters": semesters})
-        current_row += 1
+        # --- ДИСЦИПЛИНА ---
+        if re.match(r'^\*?\s*[А-ЯA-Za-z]', line):
+
+            # убираем *
+            name = re.sub(r'^\*\s*', '', line)
+
+            # извлекаем семестр
+            semester = extract_semester_from_line(name)
+
+            # чистим название
+            name = re.split(r'\s+\d+', name)[0]
+            name = re.split(r'ОПК|ПК|УК|ИИ-', name)[0]
+            name = name.strip()
+
+            if name and semester and is_valid_discipline_name(name):
+                elective_disciplines.append({
+                    "name": name,
+                    "semesters": [semester]
+                })
+
+        i += 1
+
+    return elective_disciplines
+    elective_disciplines = []
+
+    STOP_PHRASES = [
+        "Б1.В.ФК",
+        "Физическая культура (элек.)"
+    ]
+
+    start_index = None
+
+    for i, line in enumerate(all_lines):
+        if start_phrase in line:
+            start_index = i
+            break
+
+    if start_index is None:
+        return []
+
+    i = start_index
+    current_semesters = []
+
+    while i < len(all_lines):
+        line = all_lines[i]
+
+        # 🔴 СТОП-БЛОК
+        if any(stop in line for stop in STOP_PHRASES):
+            break
+
+        # --- Заголовок группы ---
+        if "Дисциплины по выбору" in line:
+            current_semesters = []
+
+            numbers = re.findall(r'\b[1-8]\b', line)
+            current_semesters = list(map(int, numbers))
+
+            i += 1
+            continue
+
+        # --- Дисциплина ---
+        if re.match(r'^\*?\s*[А-ЯA-Za-z]', line):
+            name = re.sub(r'^\*\s*', '', line)
+
+            name = re.split(r'\s+\d+', name)[0]
+            name = re.split(r'ОПК|ПК|УК|ИИ-', name)[0]
+            name = name.strip()
+
+            if name and current_semesters and is_valid_discipline_name(name):
+                for sem in current_semesters:
+                    elective_disciplines.append({
+                        "name": name,
+                        "semesters": [sem]
+                    })
+
+        i += 1
+
+    return elective_disciplines
+    elective_disciplines = []
+
+    start_index = None
+
+    # 1. Ищем начало блока
+    for i, line in enumerate(all_lines):
+        if start_phrase in line:
+            start_index = i
+            break
+
+    if start_index is None:
+        print("Не найден блок дисциплин по выбору")
+        return []
+
+    i = start_index
+
+    current_semesters = []
+
+    while i < len(all_lines):
+        line = all_lines[i]
+
+        # --- Заголовок группы ---
+        if "Дисциплины по выбору" in line:
+            current_semesters = []
+
+            # ищем числа (семестры) в строке
+            numbers = re.findall(r'\b[1-8]\b', line)
+            current_semesters = list(map(int, numbers))
+
+            i += 1
+            continue
+
+        # --- Дисциплина ---
+        if re.match(r'^\*?\s*[А-ЯA-Za-z]', line):
+            name = re.sub(r'^\*\s*', '', line)
+
+            # отсекаем хвост с цифрами
+            # убираем всё после чисел (нагрузка, часы и т.д.)
+            name = re.split(r'\s+\d+', name)[0]
+
+            # убираем хвосты с компетенциями
+            name = re.split(r'ОПК|ПК|УК|ИИ-', name)[0]
+
+            name = name.strip()
+
+            if name and current_semesters and is_valid_discipline_name(name):
+                for sem in current_semesters:
+                    elective_disciplines.append({
+                        "name": name,
+                        "semesters": [sem]
+                    })
+
+        i += 1
+
+    return elective_disciplines
+    """
+    Ищет дисциплины по выбору в строках, извлечённых из PDF.
+
+    Логика полностью повторяет оригинальную логику для Excel:
+    - Ищет строку с фразой 'Дисциплины по выбору'
+    - После неё ищет заголовки групп (тоже содержащие 'Дисциплины по выбору')
+    - Из заголовка группы читает семестры (колонки 9–16)
+    - Следующие 2 строки считаются дисциплинами этой группы
+    """
+    elective_disciplines = []
+    start_row_index = None
+
+    # Ищем строку с фразой-маркером
+    for i, row in enumerate(all_rows):
+        for cell in row:
+            if isinstance(cell, str) and elective_disciplines_start_phrase in cell:
+                start_row_index = i
+                break
+        if start_row_index is not None:
+            break
+
+    if start_row_index is None:
+        print(f"Не найдена фраза '{elective_disciplines_start_phrase}' в PDF-файле.")
+        return []
+
+    current_row_index = start_row_index + 1
+    total_rows = len(all_rows)
+
+    while current_row_index < total_rows:
+        row = all_rows[current_row_index]
+
+        # Берём название дисциплины из второй колонки (индекс 1), как в Excel
+        discipline_name = normalize_cell(row[1]) if len(row) > 1 else ''
+
+        if not discipline_name:
+            break
+
+        # Заголовок группы: содержит "Дисциплины по выбору"
+        if "Дисциплины по выбору" in discipline_name:
+            semesters = get_semesters_for_row(row)
+
+            # Следующие 2 строки — сами дисциплины
+            for offset in range(1, 3):
+                next_index = current_row_index + offset
+                if next_index >= total_rows:
+                    break
+                next_row = all_rows[next_index]
+                next_name = normalize_cell(next_row[1]) if len(next_row) > 1 else ''
+                if next_name:
+                    elective_disciplines.append({
+                        "name": next_name,
+                        "semesters": semesters
+                    })
+
+            current_row_index += 3  # заголовок + 2 дисциплины
+            continue
+
+        current_row_index += 1
 
     return elective_disciplines
 
+def extract_semester_from_line(line):
+    """
+    Извлекает семестр из строки дисциплины.
+    Берём ПОСЛЕДНЕЕ число перед компетенциями (ПК, ОПК и т.д.)
+    """
 
-def process_excel_file(filepath, filename):
-    """Обрабатывает XLS/XLSX файл учебного плана."""
+    # убираем компетенции
+    clean = re.split(r'ОПК|ПК|УК|ИИ-', line)[0]
+
+    # ищем все числа
+    numbers = re.findall(r'\b\d+\b', clean)
+
+    if not numbers:
+        return None
+
+    # берём последнее число
+    semester = int(numbers[-1])
+
+    # фильтр: семестр только 1–8
+    if 1 <= semester <= 8:
+        return semester
+
+    return None
+
+
+def process_pdf_file(filepath, filename):
+    """
+    Основная функция обработки PDF-файла.
+    Возвращает (result_dict, error_string).
+    Структура result_dict идентична оригинальной для Excel.
+    """
     try:
         file_year = extract_year_from_filename(filename)
         if not file_year:
             return None, "Не удалось определить год из названия файла"
 
-        xls = pd.ExcelFile(filepath)
-        sheet_name = next((n for n in xls.sheet_names if 'уп' in n.lower()), None)
-        if not sheet_name:
-            return None, "Не найден лист с учебным планом"
+        all_rows = extract_all_rows_from_pdf(filepath)
 
-        df = pd.read_excel(filepath, sheet_name=sheet_name)
-        direction_code = None
-        direction_name = None
-        pattern = re.compile(r'\b\d{2}\.\d{2}\.\d{2}\b')
+        if not all_rows:
+            return None, "Не удалось извлечь данные из PDF-файла. Проверьте, что файл содержит таблицы."
 
-        for i, row in df.iterrows():
-            for cell in row:
-                if isinstance(cell, str):
-                    match = pattern.search(cell)
-                    if match:
-                        direction_code = match.group()
-                        parts = cell.split('-')
-                        direction_name = parts[-1].strip() if len(parts) > 1 else ""
-                        break
-            if direction_code:
-                break
+        # Ищем код и название направления
+        direction_code, direction_name = find_direction_info(all_rows)
+        degree_type = detect_plan_type(all_rows)
 
         if not direction_code:
-            return None, "Не найдена информация о направлении"
+            return None, "Не найдена информация о направлении (формат: XX.XX.XX - Название)"
 
-        elective_disciplines = find_elective_disciplines_excel(
-            filepath, sheet_name, "Дисциплины по выбору"
-        )
+        # Ищем дисциплины по выбору
+        # --- 🔴 ОПРЕДЕЛЯЕМ ТИП ПЛАНА ---
+        plan_type = detect_plan_type(all_rows)
 
-        courses = []
-        current_semesters = []
-        for discipline in elective_disciplines:
-            name = discipline["name"]
-            semesters = discipline["semesters"]
-            if "Дисциплины по выбору" in name and semesters:
-                current_semesters = semesters
-                continue
-            elif "Дисциплины по выбору" in name and not semesters:
-                current_semesters = []
-                continue
-            for semester in current_semesters:
-                courses.append({"name": name, "semester": semester})
+        # --- 🔴 ВЫБИРАЕМ НУЖНЫЙ ПАРСЕР ---
+        if plan_type == "magistr":
+            elective_disciplines = find_electives_magistr(all_rows)
 
+        else:
+            # 👉 твоя старая логика (бакалавры НЕ ТРОГАЕМ)
+            elective_disciplines = find_elective_disciplines_from_rows(
+                all_rows, "Дисциплины по выбору"
+            )
+
+        # Разворачиваем: одна дисциплина может быть в нескольких семестрах
+        courses = [
+    {"name": d["name"], "semester": sem}
+    for d in elective_disciplines
+    for sem in d["semesters"]
+]
+
+        # Убираем дубликаты
         seen = set()
         unique_courses = []
         for course in courses:
@@ -151,7 +401,12 @@ def process_excel_file(filepath, filename):
                 unique_courses.append(course)
 
         return {
-            'direction': {'code': direction_code, 'name': direction_name, 'year': file_year},
+            'direction': {
+                'code': direction_code,
+                'name': direction_name,
+                'year': file_year,
+                'degree': degree_type   # 🔴 ВОТ ЭТО ДОБАВЛЯЕМ
+            },
             'elective_courses': unique_courses
         }, None
 
@@ -159,214 +414,57 @@ def process_excel_file(filepath, filename):
         return None, f"Ошибка обработки файла: {str(e)}"
 
 
-# ── Обработка PDF (новая логика) ──────────────────────────────────────────────
-
-def normalize_cell(value):
-    return '' if value is None else str(value).strip()
-
-
-def is_positive_number(value):
-    try:
-        return float(value) > 0
-    except (ValueError, TypeError):
-        return False
-
-
 def is_valid_discipline_name(name):
-    """Отсекает мусорные строки: компетенции, служебные строки, короткие названия."""
-    if not name or len(name) < 5 or name.isupper():
+    """
+    Отсекает мусор:
+    - компетенции (ИИ-ОПК-1, ПК-2 и т.д.)
+    - служебные строки
+    - короткие/битые строки
+    """
+
+    if not name:
         return False
+
+    # ❌ мусорные паттерны
     garbage_patterns = [
         r'ОПК', r'ПК', r'УК', r'ИИ-',
         r'Форма', r'семестр', r'аттестации',
-        r'час', r'зач', r'экз', r'№', r'^\d+$'
+        r'час', r'зач', r'экз', r'№',
+        r'^\d+$'
     ]
+
     for pattern in garbage_patterns:
         if re.search(pattern, name, re.IGNORECASE):
             return False
+
+    # ❌ слишком короткое
+    if len(name) < 5:
+        return False
+
+    # ❌ если почти всё — заглавные (часто мусор)
+    if name.isupper():
+        return False
+
     return True
 
+# ---------------------------------------------------------------------------
+# Маршруты Flask — логика полностью сохранена, изменены только:
+#   1. Проверка расширения (теперь только .pdf)
+#   2. Вызов process_pdf_file вместо process_excel_file
+# ---------------------------------------------------------------------------
 
-def extract_semester_from_line(line):
-    """Извлекает номер семестра из строки дисциплины."""
-    clean = re.split(r'ОПК|ПК|УК|ИИ-', line)[0]
-    numbers = re.findall(r'\b\d+\b', clean)
-    if not numbers:
-        return None
-    semester = int(numbers[-1])
-    return semester if 1 <= semester <= 8 else None
+URL = "https://umk:ytrewq@math-it.petrsu.ru/umk/UMK_MF/UP_RUP.html"
 
 
-def extract_all_lines_from_pdf(filepath):
-    """Извлекает все строки текста из PDF."""
-    lines = []
-    with pdfplumber.open(filepath) as pdf:
-        for page in pdf.pages:
-            text = page.extract_text()
-            if text:
-                for line in text.split('\n'):
-                    clean = line.strip()
-                    if clean:
-                        lines.append(clean)
-    return lines
-
-
-def find_direction_info(all_lines):
-    """Ищет код и название направления в строках PDF."""
-    pattern = re.compile(r'(\d{2}\.\d{2}\.\d{2})\s*-\s*(.+)')
-    for line in all_lines:
-        match = pattern.search(line)
-        if match:
-            return match.group(1), match.group(2).strip()
-    return None, None
-
-
-def detect_plan_type(all_lines):
-    """Определяет тип учебного плана: магистратура или бакалавриат."""
-    text = " ".join(all_lines).lower()
-    return "magistr" if "магистра" in text else "bachelor"
-
-
-def find_electives_bachelor(all_lines):
-    """Парсит дисциплины по выбору для бакалавриата."""
-    elective_disciplines = []
-    STOP_PHRASES = ["Б1.В.ФК", "Физическая культура (элек.)"]
-    start_index = None
-
-    for i, line in enumerate(all_lines):
-        if "Дисциплины по выбору" in line:
-            start_index = i
-            break
-
-    if start_index is None:
-        return []
-
-    i = start_index + 1
-    while i < len(all_lines):
-        line = all_lines[i]
-
-        if any(stop in line for stop in STOP_PHRASES):
-            break
-
-        if "Дисциплины по выбору" in line:
-            i += 1
-            continue
-
-        if re.match(r'^\*?\s*[А-ЯA-Za-z]', line):
-            name = re.sub(r'^\*\s*', '', line)
-            semester = extract_semester_from_line(name)
-            name = re.split(r'\s+\d+', name)[0]
-            name = re.split(r'ОПК|ПК|УК|ИИ-', name)[0].strip()
-
-            if name and semester and is_valid_discipline_name(name):
-                elective_disciplines.append({"name": name, "semesters": [semester]})
-
-        i += 1
-
-    return elective_disciplines
-
-
-def find_electives_magistr(all_lines):
-    """Парсит дисциплины по выбору для магистратуры."""
-    electives = []
-    start_index = None
-
-    for i, line in enumerate(all_lines):
-        if "Б1.В" in line and "Вариативная часть" in line:
-            start_index = i
-            break
-
-    if start_index is None:
-        return []
-
-    i = start_index + 1
-    current_semester = None
-
-    while i < len(all_lines):
-        line = all_lines[i]
-
-        if re.search(r'\bБ2\b|\bБ3\b', line):
-            break
-
-        if "Дисциплины по выбору" in line:
-            numbers = re.findall(r'\b\d+\b', line)
-            current_semester = None
-            if numbers:
-                sem = int(numbers[-1])
-                if 1 <= sem <= 4:
-                    current_semester = sem
-            i += 1
-            continue
-
-        if current_semester and re.match(r'^\*?\s*[А-ЯA-Za-z]', line):
-            name = re.sub(r'^\*\s*', '', line)
-            name = re.split(r'ОПК|ПК|УК|ИИ-', name)[0]
-            name = re.sub(r'\d+', '', name).strip()
-
-            if is_valid_discipline_name(name):
-                electives.append({"name": name, "semesters": [current_semester]})
-
-        i += 1
-
-    return electives
-
-
-def process_pdf_file(filepath, filename):
-    """Обрабатывает PDF файл учебного плана."""
-    if not PDF_AVAILABLE:
-        return None, "pdfplumber не установлен. Выполните: pip install pdfplumber"
-    try:
-        file_year = extract_year_from_filename(filename)
-        if not file_year:
-            return None, "Не удалось определить год из названия файла"
-
-        all_lines = extract_all_lines_from_pdf(filepath)
-        if not all_lines:
-            return None, "Не удалось извлечь текст из PDF"
-
-        direction_code, direction_name = find_direction_info(all_lines)
-        if not direction_code:
-            return None, "Не найдена информация о направлении (формат: XX.XX.XX - Название)"
-
-        plan_type = detect_plan_type(all_lines)
-
-        if plan_type == "magistr":
-            elective_disciplines = find_electives_magistr(all_lines)
-        else:
-            elective_disciplines = find_electives_bachelor(all_lines)
-
-        courses = [
-            {"name": d["name"], "semester": sem}
-            for d in elective_disciplines
-            for sem in d["semesters"]
-        ]
-
-        seen = set()
-        unique_courses = []
-        for course in courses:
-            key = (course['name'], course['semester'])
-            if key not in seen:
-                seen.add(key)
-                unique_courses.append(course)
-
-        return {
-            'direction': {'code': direction_code, 'name': direction_name, 'year': file_year},
-            'elective_courses': unique_courses
-        }, None
-
-    except Exception as e:
-        return None, f"Ошибка обработки PDF: {str(e)}"
-
-
-# ── Selenium: автозагрузка с платформы ───────────────────────────────────────
+from webdriver_manager.chrome import ChromeDriverManager
+from selenium.webdriver.chrome.service import Service
 
 def get_driver():
-    if not SELENIUM_AVAILABLE:
-        raise RuntimeError("selenium или webdriver_manager не установлены")
     options = Options()
-    options.add_argument("--headless")
+    options.add_argument("--headless")  # браузер без окна
     options.add_argument("--no-sandbox")
     options.add_argument("--disable-dev-shm-usage")
+
     return webdriver.Chrome(
         service=Service(ChromeDriverManager().install()),
         options=options
@@ -374,73 +472,71 @@ def get_driver():
 
 
 def is_study_plan(text):
-    if not text or "ФГОС" in text.upper():
+    if not text:
         return False
-    return bool(re.search(r"\b\d{6}-", text))
+
+    if "ФГОС" in text.upper():
+        return False
+
+    if re.search(r"\b\d{6}-", text):
+        return True
+
+    return False
 
 
 def extract_links():
-    """Извлекает ссылки на учебные планы с платформы через Selenium."""
     driver = get_driver()
-    driver.get(PLATFORM_URL)
+    driver.get(URL)
     time.sleep(3)
 
+    links = driver.find_elements(By.TAG_NAME, "a")
+
     result = []
-    for link in driver.find_elements(By.TAG_NAME, "a"):
+
+    for link in links:
         text = link.text.strip()
         href = link.get_attribute("href")
+
         if not text or not href:
             continue
+
         if is_study_plan(text):
+
+            # 🔴 извлекаем код направления (например 44.03.05 или 440305)
             code_match = re.search(r'\b(\d{2})[.\-]?\d{2}[.\-]?\d{2}', text)
-            if code_match and code_match.group(1) == "44":
-                continue  # игнорируем педагогику
-            result.append({"name": text, "url": href})
+
+            if code_match:
+                code_prefix = code_match.group(1)
+
+                # ❌ игнорируем педагогику (44.xx.xx)
+                if code_prefix == "44":
+                    continue
+
+            result.append({
+                "name": text,
+                "url": href
+            })
 
     driver.quit()
     return result
 
-
 def download_pdf(url, filename):
-    """Скачивает PDF по URL."""
     try:
-        response = http_requests.get(url, headers={"User-Agent": "Mozilla/5.0"})
+        response = requests.get(url, headers={"User-Agent": "Mozilla/5.0"})
+
         if response.status_code == 200:
             os.makedirs(UPLOAD_FOLDER, exist_ok=True)
             filepath = os.path.join(UPLOAD_FOLDER, filename)
+
             with open(filepath, 'wb') as f:
                 f.write(response.content)
+
             return filepath
+
     except Exception as e:
         print(f"Ошибка скачивания {url}: {e}")
+
     return None
-
-
-def _save_direction_and_courses(direction_data, elective_courses):
-    """Вспомогательная функция: сохраняет направление и дисциплины в БД."""
-    direction = Direction.query.filter_by(
-        code=direction_data['code'],
-        year=direction_data['year']
-    ).first()
-
-    if not direction:
-        existing = Direction.query.filter_by(code=direction_data['code']).first()
-        direction = Direction(
-            code=direction_data['code'],
-            name=direction_data['name'],
-            year=direction_data['year']
-        )
-        db.session.add(direction)
-        try:
-            db.session.commit()
-        except Exception as e:
-            db.session.rollback()
-            raise e
-
-    return direction
-
-
-# ── Маршруты Flask ────────────────────────────────────────────────────────────
 
 @manage_courses_bp.route('/manage-courses', methods=['GET', 'POST'])
 def manage_courses():
@@ -475,7 +571,6 @@ def toggle_enrollment():
     user_id = session.get('user_id')
     if not user_id:
         return redirect(url_for('login'))
-
     user = User.query.get(user_id)
     if not user.has_role('Специалист дирекции'):
         return redirect(url_for('dashboard'))
@@ -493,144 +588,82 @@ def toggle_enrollment():
 
 
 @manage_courses_bp.route('/upload-plan', methods=['POST'])
-def upload_plan():
-    """Ручная загрузка учебного плана (XLS, XLSX или PDF)."""
-    user_id = session.get('user_id')
-    if not user_id:
-        return redirect(url_for('login'))
+def detect_plan_type(all_lines):
+    text = " ".join(all_lines).lower()
 
-    user = User.query.get(user_id)
-    if not user.has_role('Специалист дирекции'):
-        return redirect(url_for('dashboard'))
+    if "магистра" in text:
+        return "magistr"
 
-    if 'plan_file' not in request.files:
-        flash('Файл не был загружен', 'error')
-        return redirect(url_for('manage_courses_bp.manage_courses'))
+    return "bachelor"
 
-    file = request.files['plan_file']
-    if file.filename == '':
-        flash('Файл не выбран', 'error')
-        return redirect(url_for('manage_courses_bp.manage_courses'))
+def find_electives_magistr(all_lines):
+    electives = []
 
-    if not allowed_file(file.filename):
-        flash('Недопустимый формат файла. Разрешены: .xls, .xlsx, .pdf', 'error')
-        return redirect(url_for('manage_courses_bp.manage_courses'))
+    start_index = None
 
-    filename = secure_filename(file.filename)
-    upload_path = os.path.join(UPLOAD_FOLDER, filename)
-    os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-    file.save(upload_path)
+    # --- 1. Ищем начало вариативной части ---
+    for i, line in enumerate(all_lines):
+        if "Б1.В" in line and "Вариативная часть" in line:
+            start_index = i
+            break
 
-    ext = filename.rsplit('.', 1)[1].lower()
-    if ext == 'pdf':
-        result, error = process_pdf_file(upload_path, filename)
-    else:
-        result, error = process_excel_file(upload_path, filename)
+    if start_index is None:
+        print("Не найдена вариативная часть (магистратура)")
+        return []
 
-    if error:
-        flash(f'Ошибка обработки файла: {error}', 'error')
-        return redirect(url_for('manage_courses_bp.manage_courses'))
+    i = start_index + 1
+    current_semester = None
 
-    direction_data = result['direction']
+    while i < len(all_lines):
+        line = all_lines[i]
 
-    direction = Direction.query.filter_by(
-        code=direction_data['code'],
-        year=direction_data['year']
-    ).first()
+        # --- 🔴 СТОП: выходим из блока ---
+        if re.search(r'\bБ2\b|\bБ3\b', line):
+            break
 
-    if not direction:
-        direction = Direction(
-            code=direction_data['code'],
-            name=direction_data['name'],
-            year=direction_data['year']
-        )
-        db.session.add(direction)
-        try:
-            db.session.commit()
-        except Exception as e:
-            db.session.rollback()
-            flash(f'Ошибка при добавлении направления: {str(e)}', 'error')
-            return redirect(url_for('manage_courses_bp.manage_courses'))
+        # --- 2. Заголовок группы ---
+        if "Дисциплины по выбору" in line:
 
-    new_courses = result['elective_courses']
-    old_courses = ElectiveCourse.query.filter_by(direction_id=direction.id).all()
+            # ищем все числа в строке
+            numbers = re.findall(r'\b\d+\b', line)
 
-    to_add = [c for c in new_courses
-              if not any(oc.name == c['name'] and oc.semester == c['semester'] for oc in old_courses)]
-    to_delete = [{'id': oc.id, 'name': oc.name, 'semester': oc.semester} for oc in old_courses
-                 if not any(c['name'] == oc.name and c['semester'] == oc.semester for c in new_courses)]
-    no_changes = [c for c in new_courses
-                  if any(oc.name == c['name'] and oc.semester == c['semester'] for oc in old_courses)]
+            current_semester = None
 
-    session['pending_upload'] = {
-        'direction': direction_data,
-        'to_add': to_add,
-        'to_delete': to_delete,
-        'no_changes': no_changes
-    }
+            if numbers:
+                sem = int(numbers[-1])  # последнее число = семестр
+                if 1 <= sem <= 4:
+                    current_semester = sem
 
-    return render_template('confirm_course_changes.html',
-                           to_add=to_add,
-                           to_delete=to_delete,
-                           no_changes=no_changes,
-                           direction=direction)
+            i += 1
+            continue
 
+        # --- 3. Дисциплина ---
+        if current_semester and re.match(r'^\*?\s*[А-ЯA-Za-z]', line):
 
-@manage_courses_bp.route('/confirm-upload', methods=['POST'])
-def confirm_upload():
-    """Подтверждение изменений после ручной загрузки."""
-    data = session.get('pending_upload')
-    if not data:
-        flash('Нет данных для подтверждения', 'error')
-        return redirect(url_for('manage_courses_bp.manage_courses'))
+            # убираем *
+            name = re.sub(r'^\*\s*', '', line)
 
-    direction_data = data['direction']
-    to_delete = data['to_delete']
+            # убираем компетенции
+            name = re.split(r'ОПК|ПК|УК|ИИ-', name)[0]
 
-    direction = Direction.query.filter_by(
-        code=direction_data['code'],
-        year=direction_data['year']
-    ).first()
+            # убираем цифры (часы и т.д.)
+            name = re.sub(r'\d+', '', name)
 
-    if not direction:
-        direction = Direction(
-            code=direction_data['code'],
-            name=direction_data['name'],
-            year=direction_data['year']
-        )
-        db.session.add(direction)
-        db.session.commit()
+            name = name.strip()
 
-    if to_delete:
-        old_ids = [c['id'] for c in to_delete]
-        StudentElectiveCourse.query.filter(
-            StudentElectiveCourse.elective_course_id.in_(old_ids)
-        ).delete(synchronize_session=False)
-        ElectiveCourse.query.filter(
-            ElectiveCourse.id.in_(old_ids)
-        ).delete(synchronize_session=False)
+            if is_valid_discipline_name(name):
+                electives.append({
+                    "name": name,
+                    "semesters": [current_semester]
+                })
 
-    count = int(request.form.get('to_add_count', 0))
-    for i in range(count):
-        if request.form.get(f'course_add_{i}') == '1':
-            name = request.form.get(f'course_name_{i}', '').strip()
-            semester = request.form.get(f'course_semester_{i}')
-            if name and semester:
-                db.session.add(ElectiveCourse(
-                    name=name,
-                    semester=int(semester),
-                    direction_id=direction.id
-                ))
+        i += 1
 
-    db.session.commit()
-    session.pop('pending_upload', None)
-    flash('Данные успешно обновлены', 'success')
-    return redirect(url_for('manage_courses_bp.manage_courses'))
+    return electives
 
 
 @manage_courses_bp.route('/update-plans', methods=['POST'])
 def update_plans():
-    """Автоматическая загрузка учебных планов с закрытой платформы через Selenium."""
     user_id = session.get('user_id')
     if not user_id:
         return redirect(url_for('login'))
@@ -639,18 +672,11 @@ def update_plans():
     if not user.has_role('Специалист дирекции'):
         return redirect(url_for('dashboard'))
 
-    if not SELENIUM_AVAILABLE:
-        flash('Selenium не установлен. Выполните: pip install selenium webdriver-manager requests', 'error')
-        return redirect(url_for('manage_courses_bp.manage_courses'))
-
-    if not PDF_AVAILABLE:
-        flash('pdfplumber не установлен. Выполните: pip install pdfplumber', 'error')
-        return redirect(url_for('manage_courses_bp.manage_courses'))
-
     try:
         links = extract_links()
+
         if not links:
-            flash("Не удалось найти учебные планы на платформе", "error")
+            flash("Не удалось найти учебные планы", "error")
             return redirect(url_for('manage_courses_bp.manage_courses'))
 
         total_loaded = 0
@@ -658,20 +684,21 @@ def update_plans():
         for item in links:
             url = item["url"]
             filename = secure_filename(url.split("/")[-1])
-            if not filename.endswith('.pdf'):
-                filename += '.pdf'
 
             filepath = download_pdf(url, filename)
+
             if not filepath:
                 continue
 
             result, error = process_pdf_file(filepath, filename)
+
             if error:
                 print(f"Ошибка {filename}: {error}")
                 continue
 
             direction_data = result['direction']
 
+            # --- ищем или создаем направление ---
             direction = Direction.query.filter_by(
                 code=direction_data['code'],
                 year=direction_data['year']
@@ -681,23 +708,27 @@ def update_plans():
                 direction = Direction(
                     code=direction_data['code'],
                     name=direction_data['name'],
-                    year=direction_data['year']
+                    year=direction_data['year'],
+                    degree=direction_data.get('degree')  # 🔴 ДОБАВИЛИ
                 )
                 db.session.add(direction)
                 db.session.commit()
 
-            # Удаляем старые дисциплины
+            # --- удаляем старые дисциплины ---
             old_courses = ElectiveCourse.query.filter_by(direction_id=direction.id).all()
+
             if old_courses:
                 old_ids = [c.id for c in old_courses]
+
                 StudentElectiveCourse.query.filter(
                     StudentElectiveCourse.elective_course_id.in_(old_ids)
                 ).delete(synchronize_session=False)
+
                 ElectiveCourse.query.filter(
                     ElectiveCourse.id.in_(old_ids)
                 ).delete(synchronize_session=False)
 
-            # Добавляем новые
+            # --- добавляем новые ---
             for course in result['elective_courses']:
                 db.session.add(ElectiveCourse(
                     name=course['name'],
@@ -708,23 +739,9 @@ def update_plans():
             db.session.commit()
             total_loaded += 1
 
-        flash(f"Обновлено учебных планов: {total_loaded}", "success")
+        flash(f"✅ Обновлено учебных планов: {total_loaded}", "success")
 
     except Exception as e:
-        flash(f"Ошибка: {str(e)}", "error")
+        flash(f"❌ Ошибка: {str(e)}", "error")
 
-    return redirect(url_for('manage_courses_bp.manage_courses'))
-
-
-@manage_courses_bp.route('/delete-all-courses', methods=['POST'])
-def delete_all_courses():
-    """Удаление всех дисциплин (для отладки)."""
-    try:
-        StudentElectiveCourse.query.delete()
-        ElectiveCourse.query.delete()
-        db.session.commit()
-        flash('Все дисциплины удалены', 'success')
-    except Exception as e:
-        db.session.rollback()
-        flash(f'Ошибка при удалении: {e}', 'error')
     return redirect(url_for('manage_courses_bp.manage_courses'))
