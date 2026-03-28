@@ -6,3 +6,7 @@ pandas
 reportlab
 Werkzeug
 ldap3
+pdfplumber
+selenium
+webdriver-manager
+requests
