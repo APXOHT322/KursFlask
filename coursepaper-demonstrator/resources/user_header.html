@@ -5,7 +5,6 @@
 
     {% if logged? %}
     |
-    <!-- Если SSO-токен сгенерирован — используем его, иначе просто ссылка на Flask -->
     <a href="{% if flask-url %}{{flask-url}}{% else %}http://localhost:5000{% endif %}" target="_blank">
         Запись на дисциплины
     </a>
@@ -19,14 +18,11 @@
     {% endifequal %}
     <a href="/login/exit">Выход</a>
     {% else %}
-    <a href="http://localhost:5000" target="_blank">Запись на дисциплины</a>
     <div style="margin-top:10px">
         <span>Вход:</span>
-        <form id="webd_login_form" action="/login" method="POST" style="display:inline"
-              title="После авторизации доступно: регистрация работ, изменение личных данных, добавление и удаление файлов отчетов">
+        <form id="webd_login_form" action="/login" method="POST" style="display:inline">
             <input placeholder="Имя пользователя" type="text" name="username"
-                   id="inp_username" class="inp txt_inp" maxlength="15"
-                   autofocus/>
+                   id="inp_username" class="inp txt_inp" maxlength="15" autofocus/>
             <input placeholder="Пароль" type="password" name="password"
                    id="inp_password" class="inp txt_inp" maxlength="15"/>
             <input type="submit" id="btn_login" value="Войти" class="inp"/>
