@@ -32,11 +32,19 @@
       nil)))
 
 (defn flask-sso-url
-  "Возвращает URL Flask с SSO-токеном для пользователя uid."
-  [uid]
-  (if-let [token (create-sso-token! uid)]
-    (str flask-base-url "/sso?token=" token)
-    (str flask-base-url "/login")))
+  "Возвращает URL Flask с SSO-токеном для пользователя uid.
+   next-path — необязательный внутренний путь Flask для редиректа после входа
+   (например \"/student_courses\").
+   Токен генерируется в момент вызова — используйте непосредственно перед
+   редиректом, а не заранее, иначе 2-минутный TTL может истечь."
+  ([uid]
+   (flask-sso-url uid nil))
+  ([uid next-path]
+   (if-let [token (create-sso-token! uid)]
+     (cond-> (str flask-base-url "/sso?token=" token)
+       (and next-path (not (clojure.string/blank? next-path)))
+       (str "&next=" (java.net.URLEncoder/encode next-path "UTF-8")))
+     (str flask-base-url "/login"))))
 
 ;; ── Валидация токена (Flask → Clojure) ────────────────────────────────────────
 
