@@ -125,13 +125,12 @@
                               (and correct? gn student))    ;;TODO: delete after 2020
                       (wf/init-directory-structure! cfg username gn))
         cleared  (when initialized (parse/clear-cache))
-        student  (parse/get-student cfg {:logins username})]
-    ;; ИСПРАВЛЕНИЕ: flask-url НЕ генерируется здесь при логине.
-    ;; Токен имеет TTL 2 минуты — если создать сейчас, он протухнет раньше,
-    ;; чем пользователь нажмёт кнопку перехода. Свежий токен выдаётся
-    ;; непосредственно в момент перехода через роут /goto/flask.
+        student  (parse/get-student cfg {:logins username})
+        ;; Генерируем SSO-токен для Flask только при успешном входе
+        flask-url (when correct? (sso/flask-sso-url username))]
     (log/info "admin logged in?" admin?)
     (log/info "log in registered" student gn initialized)
+    (log/info "flask-url for" username "is" flask-url)
     (-> (redirect (if (and correct? student) "/user/identity"
                                              (if correct?
                                                ;user is a lecturer, query for his students
@@ -140,7 +139,8 @@
         (assoc :session
                (merge session
                       {:logged?   (if correct? (if student :rstudent :rother) false)
-                       :admin?    admin?}
+                       :admin?    admin?
+                       :flask-url flask-url}
                       (student-identifiers student)
                       {:logins username})))))
 
@@ -295,19 +295,18 @@
 (defroutes
   router
   "Routing function for webd with all routes described."
-  (GET "/" {{logged? :logged?} :session}
+  (GET "/" {{logged? :logged? flask-url :flask-url} :session}
     (let [cfg (load-cfg)]
-      ;; flask-url не хранится в сессии — передаём nil, шаблоны используют /goto/flask
-      (ui/page-index cfg (if logged? (parse/query cfg {}) []) logged? nil)))
+      (ui/page-index cfg (if logged? (parse/query cfg {}) []) logged? flask-url)))
   (POST "/query" {params                            :params
                   {logged? :logged? admin? :admin?} :session}
     (handler-query-post (load-cfg) params logged? admin?))
   (GET "/query" {params                            :params
-                 {logged? :logged? admin? :admin?} :session}
-    (handler-query-get (load-cfg) params logged? admin? nil))
+                 {logged? :logged? admin? :admin? flask-url :flask-url} :session}
+    (handler-query-get (load-cfg) params logged? admin? flask-url))
   (GET "/query-adviser" {params                                             :params
-                         {username :logins logged? :logged? admin? :admin?} :session}
-    (handler-query-get-advisors-students (load-cfg) username logged? admin? nil))
+                         {username :logins logged? :logged? admin? :admin? flask-url :flask-url} :session}
+    (handler-query-get-advisors-students (load-cfg) username logged? admin? flask-url))
   (POST "/query/report" {params             :params
                          {logged? :logged?} :session}
     (handler-report-post (load-cfg) params logged?))
@@ -317,8 +316,8 @@
   (POST "/query/directive" {params             :params
                             {logged? :logged?} :session}
     (handler-directive-post (load-cfg) params logged?))
-  (GET "/templates" {{logged? :logged?} :session}
-    (ui/page-templates (load-cfg) logged? nil))
+  (GET "/templates" {{logged? :logged? flask-url :flask-url} :session}
+    (ui/page-templates (load-cfg) logged? flask-url))
   (GET "/login" {{fail? :fail}      :params
                  {logged? :logged?} :session}
     (handler-login-get (load-cfg) logged? fail?))
@@ -332,16 +331,16 @@
   (POST "/login" {{username :username password :password} :params
                   session                                 :session}
     (handler-login-post (load-cfg) session username password))
-  (GET "/user/identity" {{username :logins logged? :logged?} :session
+  (GET "/user/identity" {{username :logins logged? :logged? flask-url :flask-url} :session
                          {result :result}                    :params}
-    (handler-identity-get (load-cfg) logged? :identity username result nil))
+    (handler-identity-get (load-cfg) logged? :identity username result flask-url))
   (POST "/user/identity" {params                         :params
                           {logged? :logged? :as session} :session}
     (handler-identity-post (load-cfg) params logged?
                            (student-identifiers session) false))
-  (GET "/user/identity/:year" {{username :logins logged? :logged?} :session
+  (GET "/user/identity/:year" {{username :logins logged? :logged? flask-url :flask-url} :session
                                {result :result year :year}         :params}
-    (handler-identity-get (load-cfg) logged? :identity username result year nil))
+    (handler-identity-get (load-cfg) logged? :identity username result year flask-url))
   (POST "/user/identity/:year" {{year :year :as params}        :params
                                 {logged? :logged? :as session} :session}
     (handler-identity-post (load-cfg) params logged?
@@ -351,15 +350,15 @@
     (handler-identity-post (load-cfg) params logged?
                            (student-identifiers session) true))
   (GET "/user/file/" {} (redirect "/user/file"))
-  (GET "/user/file" {{logged? :logged? admin? :admin? :as session} :session
+  (GET "/user/file" {{logged? :logged? admin? :admin? flask-url :flask-url :as session} :session
                      params                                        :params}
     (handler-file-get (load-cfg) logged? admin? :upload
-                      (student-identifiers session) params nil))
-  (GET "/user/file/:year" {{logged? :logged? admin? :admin? :as session} :session
+                      (student-identifiers session) params flask-url))
+  (GET "/user/file/:year" {{logged? :logged? admin? :admin? flask-url :flask-url :as session} :session
                            {year :year :as params}                       :params}
     (handler-file-get (load-cfg) logged? admin? :upload
                       (student-identifiers session year)
-                      params nil))
+                      params flask-url))
   (POST "/user/file/:year/upload" {{year :year :as params}        :params
                                    {logged? :logged? :as session} :session}
     (handler-file-post (load-cfg) params logged?
@@ -376,42 +375,24 @@
                              {logged? :logged? :as session} :session}
     (handler-file-post (load-cfg) params logged?
                        (student-identifiers session) "save-file"))
-
-  ;; ── SSO: вход по токену от Flask ─────────────────────────────────────────
-  ;; ИСПРАВЛЕНИЕ: убрана генерация нового flask-url в сессию.
-  ;; Токен живёт 2 минуты — хранить его в сессии бессмысленно.
-  ;; Переход обратно во Flask осуществляется через /goto/flask.
-  (GET "/sso" {{token :token} :params}
+  (GET "/sso" {{token :token} :params session :session}
     (let [uid (webd.sso/validate-sso-token! token)]
       (if uid
-        (let [cfg     (load-cfg)
+        (let [cfg    (load-cfg)
               student (parse/get-student cfg {:logins uid})
-              gn      (or (auth/get-group-ldap cfg uid) (:groups student))]
+              gn      (or (auth/get-group-ldap cfg uid) (:groups student))
+              flask-url (webd.sso/flask-sso-url uid)]
           (-> (redirect (if student "/user/identity" "/"))
               (assoc :session
-                     {:logged?  (if student :rstudent :rother)
-                      :admin?   false
-                      :logins   uid
-                      :years    (:years student)
-                      :courses  (:courses student)
-                      :groups   (or gn (:groups student))})))
+                     {:logged?   (if student :rstudent :rother)
+                      :admin?    false
+                      :flask-url flask-url
+                      :logins    uid
+                      :years     (:years student)
+                      :courses   (:courses student)
+                      :groups    (or gn (:groups student))})))
         (redirect "/login?fail=t"))))
-
-  ;; ── SSO: переход из Clojure во Flask ─────────────────────────────────────
-  ;; Токен генерируется ЗДЕСЬ, прямо перед редиректом — не протухнет.
-  ;; next — опциональный путь Flask, куда попасть после SSO-входа.
-  ;; Примеры ссылок в шаблонах:
-  ;;   /goto/flask                         → переход на /dashboard
-  ;;   /goto/flask?next=/student_courses   → переход сразу на запись дисциплин
-  (GET "/goto/flask" {{next-path :next} :params
-                      {logged? :logged? username :logins} :session}
-    (if (and logged? username)
-      (do
-        (log/info "Redirecting" username "to Flask, next=" next-path)
-        (redirect (sso/flask-sso-url username next-path)))
-      (redirect "/login")))
-
-  (croute/resources "/")
+    (croute/resources "/")
   (croute/not-found "not found"))
 
 (defn destroy []
