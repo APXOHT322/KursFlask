@@ -9,6 +9,9 @@ from app.ldap_auth import ldap_authenticate, ldap_get_user_info
 from sqlalchemy import text
 from functools import wraps
 from datetime import datetime
+import logging
+
+log = logging.getLogger(__name__)
 
 
 def create_app():
@@ -54,15 +57,80 @@ def create_app():
             return wrapper
         return decorator
 
+    # ── Маппинг суффикса группы → код направления ────────────────────────────
+    #
+    # Формат группы бакалавров: 22XYY
+    #   22   — год поступления (2022)
+    #   X    — курс (3-я цифра)
+    #   YY   — суффикс направления (последние 2 цифры)
+    #
+    # Формат группы магистров: 5NN (3 символа, начинается с 5)
+    #
+    _BACHELOR_SUFFIX_TO_CODE = {
+        '01': '01.03.01',   # Математика
+        '03': '01.03.02',   # Прикладная математика и информатика
+        '04': '01.03.02',   # Прикладная математика и информатика
+        '05': '09.03.02',   # Информационные системы и технологии
+        '06': '09.03.02',   # Информационные системы и технологии
+        '07': '09.03.04',   # Программная инженерия
+    }
+
+    _MASTER_GROUP_TO_CODE = {
+        '501': '01.04.01',  # Математика магистры
+        '503': '01.04.02',  # Прикладная математика и информатика магистры
+        '505': '09.04.02',  # Информационные системы и технологии магистры
+    }
+
+    def _resolve_direction(group_number: str, admission_year: int):
+        """
+        По номеру группы и году поступления возвращает direction_id или None.
+
+        Логика:
+          - Если группа начинается с '5' и длина 3 — магистратура (_MASTER_GROUP_TO_CODE)
+          - Иначе — бакалавриат: берём последние 2 символа как суффикс направления
+        """
+        if not group_number:
+            return None
+
+        # Магистратура: группы вида 501, 503, 505
+        if len(group_number) == 3 and group_number.startswith('5'):
+            direction_code = _MASTER_GROUP_TO_CODE.get(group_number)
+        else:
+            # Бакалавриат: последние 2 цифры — суффикс направления
+            suffix = group_number[-2:]
+            direction_code = _BACHELOR_SUFFIX_TO_CODE.get(suffix)
+
+        if not direction_code:
+            log.warning("_resolve_direction: неизвестная группа '%s'", group_number)
+            return None
+
+        # Ищем направление с нужным кодом и годом учебного плана
+        direction = Direction.query.filter_by(
+            code=direction_code,
+            year=admission_year
+        ).first()
+
+        if not direction:
+            # Запасной вариант: берём любое направление с этим кодом
+            direction = Direction.query.filter_by(code=direction_code).first()
+            if direction:
+                log.warning(
+                    "_resolve_direction: не нашли direction code=%s year=%s, "
+                    "используем year=%s (id=%s)",
+                    direction_code, admission_year, direction.year, direction.id
+                )
+
+        return direction.id if direction else None
+
     # ── Вспомогательная функция: создать/обновить пользователя из LDAP ────────
     def _provision_user(ldap_info: dict) -> User:
         uid  = ldap_info["uid"]
         user = User.query.filter_by(login=uid).first()
 
         if user is None:
-            direction_id   = None
             group_number   = ldap_info.get("group")
             admission_year = None
+            direction_id   = None
 
             if ldap_info["is_student"] and group_number:
                 try:
@@ -70,6 +138,8 @@ def create_app():
                     admission_year = 2000 + year_short
                 except (ValueError, IndexError):
                     admission_year = datetime.now().year
+
+                direction_id = _resolve_direction(group_number, admission_year)
 
             user = User(
                 fio            = ldap_info["fio"],
