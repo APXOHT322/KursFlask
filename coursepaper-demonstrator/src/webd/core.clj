@@ -125,12 +125,9 @@
                               (and correct? gn student))    ;;TODO: delete after 2020
                       (wf/init-directory-structure! cfg username gn))
         cleared  (when initialized (parse/clear-cache))
-        student  (parse/get-student cfg {:logins username})
-        ;; Генерируем SSO-токен для Flask только при успешном входе
-        flask-url (when correct? (sso/flask-sso-url username))]
+        student  (parse/get-student cfg {:logins username})]
     (log/info "admin logged in?" admin?)
     (log/info "log in registered" student gn initialized)
-    (log/info "flask-url for" username "is" flask-url)
     (-> (redirect (if (and correct? student) "/user/identity"
                                              (if correct?
                                                ;user is a lecturer, query for his students
@@ -140,7 +137,7 @@
                (merge session
                       {:logged?   (if correct? (if student :rstudent :rother) false)
                        :admin?    admin?
-                       :flask-url flask-url}
+                       :flask-url "/goto/flask"}
                       (student-identifiers student)
                       {:logins username})))))
 
@@ -378,21 +375,29 @@
   (GET "/sso" {{token :token} :params session :session}
     (let [uid (webd.sso/validate-sso-token! token)]
       (if uid
-        (let [cfg    (load-cfg)
+        (let [cfg     (load-cfg)
               student (parse/get-student cfg {:logins uid})
-              gn      (or (auth/get-group-ldap cfg uid) (:groups student))
-              flask-url (webd.sso/flask-sso-url uid)]
+              gn      (or (auth/get-group-ldap cfg uid) (:groups student))]
           (-> (redirect (if student "/user/identity" "/"))
               (assoc :session
                      {:logged?   (if student :rstudent :rother)
                       :admin?    false
-                      :flask-url flask-url
+                      :flask-url "/goto/flask"
                       :logins    uid
                       :years     (:years student)
                       :courses   (:courses student)
                       :groups    (or gn (:groups student))})))
         (redirect "/login?fail=t"))))
-    (croute/resources "/")
+    ;; ── SSO: переход из Clojure в Flask по нажатию кнопки ──────────────────────
+  ;; Токен генерируется здесь, непосредственно в момент перехода,
+  ;; а не заранее при входе — это исключает проблему протухших токенов.
+  (GET "/goto/flask" {{username :logins logged? :logged?} :session}
+    (if (and logged? username)
+      (if-let [url (webd.sso/flask-sso-url username)]
+        (redirect url)
+        (redirect "http://localhost:5000/login"))
+      (redirect "http://localhost:5000/login")))
+  (croute/resources "/")
   (croute/not-found "not found"))
 
 (defn destroy []
