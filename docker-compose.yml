@@ -1,0 +1,14 @@
+version: "3.9"
+
+services:
+  flask:
+    build: ./app
+    ports:
+      - "5000:5000"
+    restart: always
+
+  clojure:
+    build: ./coursepaper-demonstrator
+    ports:
+      - "3000:3000"
+    restart: always
