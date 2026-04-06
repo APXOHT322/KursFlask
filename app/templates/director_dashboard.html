@@ -1,33 +1,20 @@
 {% extends 'layout.html' %}
 
-{% block title %}Панель дирекции{% endblock %}
+{% block title %}Панель управления специалиста дирекции{% endblock %}
 
 {% block content %}
-<style>
-  .nav-btn { text-decoration: none; border: 1px solid #0000EE; padding: 5px 12px;
-    border-radius: 4px; font-size: 13px; color: #0000EE; }
-  .nav-btn:hover { background: #f0f0f0; }
-  .page-nav-bottom { margin-top: 30px; padding: 12px 0; border-top: 1px solid #ccc;
-    display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
-  .page-nav-bottom a { text-decoration: none; border: 1px solid #0000EE; padding: 5px 14px;
-    border-radius: 4px; color: #0000EE; font-size: 13px; }
-  .page-nav-bottom a:hover { background: #f0f4ff; }
-  .page-nav-bottom a.danger { border-color: red; color: red; }
-  .page-nav-bottom a.danger:hover { background: #fff0f0; }
-</style>
+    <div class="dashboard-container">
+        <h1>Панель управления специалиста дирекции</h1>
+        <p>Добро пожаловать, {{ user.fio }}!</p>
 
-<div style="display: flex; justify-content: space-between; align-items: center;">
-  <h1>Панель дирекции</h1>
-  <a href="{{ url_for('dashboard') }}" class="nav-btn">← Главная</a>
-</div>
+        <div class="dashboard-links">
+            <a href="{{ url_for('manage_courses_bp.manage_courses') }}">Управление дисциплинами</a>
+            <a href="{{ url_for('manage_students_courses') }}">Распределение студентов</a>
+            <a href="{{ url_for('reports_bp.generate_reports') }}">Сгенерировать отчет</a>
+        </div>
 
-<p>Добро пожаловать, {{ user.fio }}!</p>
-<hr>
-
-<div class="page-nav-bottom">
-  <a href="{{ url_for('manage_courses_bp.manage_courses') }}">Управление дисциплинами</a>
-  <a href="{{ url_for('manage_students_courses') }}">Распределение студентов</a>
-  <a href="{{ url_for('reports_bp.generate_reports') }}">Сгенерировать отчёт</a>
-  <a href="{{ url_for('logout') }}" class="danger">Выйти</a>
-</div>
+        <div class="logout-section">
+            <a href="{{ url_for('logout') }}">Выйти</a>
+        </div>
+    </div>
 {% endblock %}
