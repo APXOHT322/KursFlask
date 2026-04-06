@@ -4,44 +4,84 @@
   <header style="display: flex; justify-content: space-between; align-items: center;">
     <h1>Привет, {{ user.fio }}</h1>
     <div>
-      <a href="{{ url_for('goto_kurs') }}"
-         style="text-decoration: none; border: 1px solid #0000EE; padding: 5px 10px; border-radius: 5px; margin-right: 10px;">
-        ← Система Курс
-      </a>
-      <a href="{{ url_for('logout') }}"
-         style="color: red; text-decoration: none; border: 1px solid red; padding: 5px 10px; border-radius: 5px;">
-        Выйти
-      </a>
+      <a href="{{ url_for('goto_kurs') }}" class="nav-btn">← Система Курс</a>
+      <a href="{{ url_for('logout') }}" class="nav-btn nav-btn-danger">Выйти</a>
     </div>
   </header>
+
+  <style>
+    .nav-btn {
+      text-decoration: none;
+      border: 1px solid #0000EE;
+      padding: 5px 12px;
+      border-radius: 4px;
+      margin-left: 8px;
+      font-size: 13px;
+      color: #0000EE;
+    }
+    .nav-btn-danger { border-color: red; color: red; }
+    .nav-btn:hover { background: #f0f0f0; }
+    .dashboard-section {
+      margin: 20px 0;
+      padding: 16px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+    }
+    .dashboard-section h2 { margin-top: 0; font-size: 16px; color: #333; }
+    .dashboard-links { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 10px; }
+    .dashboard-link {
+      text-decoration: none;
+      border: 1px solid #0000EE;
+      padding: 6px 14px;
+      border-radius: 4px;
+      color: #0000EE;
+      font-size: 13px;
+    }
+    .dashboard-link:hover { background: #f0f4ff; }
+    .dashboard-link-admin { border-color: darkred; color: darkred; }
+    .dashboard-link-admin:hover { background: #fff0f0; }
+  </style>
 
   <hr>
 
   {% if user.has_role('Студент') %}
-    <section>
+    <div class="dashboard-section">
       <h2>Функции студента</h2>
-      <a href="{{ url_for('student_courses.student_courses') }}" class="btn btn-primary">Мои курсы</a>
-    </section>
+      <div class="dashboard-links">
+        <a href="{{ url_for('student_courses.student_courses') }}" class="dashboard-link">Мои курсы</a>
+      </div>
+    </div>
   {% endif %}
 
   {% if user.has_role('Преподаватель') %}
-    <section>
+    <div class="dashboard-section">
       <h2>Функции преподавателя</h2>
-      <a href="{{ url_for('reports_bp.generate_reports') }}">Отчёты</a>
-    </section>
+      <div class="dashboard-links">
+        <a href="{{ url_for('reports_bp.generate_reports') }}" class="dashboard-link">Отчёты</a>
+      </div>
+    </div>
   {% endif %}
 
   {% if user.has_role('Специалист дирекции') or user.has_role('Администратор') %}
-    <section>
+    <div class="dashboard-section">
       <h2>Панель дирекции</h2>
-      <a href="{{ url_for('director_dashboard') }}">Дирекция</a>
-    </section>
+      <div class="dashboard-links">
+        <a href="{{ url_for('director_dashboard') }}" class="dashboard-link">Панель дирекции</a>
+        <a href="{{ url_for('manage_courses_bp.manage_courses') }}" class="dashboard-link">Управление дисциплинами</a>
+        <a href="{{ url_for('manage_students_courses') }}" class="dashboard-link">Распределение студентов</a>
+        <a href="{{ url_for('reports_bp.generate_reports') }}" class="dashboard-link">Отчёты</a>
+      </div>
+    </div>
   {% endif %}
 
   {% if user.has_role('Администратор') %}
-    <section>
+    <div class="dashboard-section">
       <h2>Администрирование</h2>
-      <a href="{{ url_for('admin_users') }}" style="color: darkred;">Управление пользователями и ролями</a>
-    </section>
+      <div class="dashboard-links">
+        <a href="{{ url_for('admin_users') }}" class="dashboard-link dashboard-link-admin">
+          Управление пользователями и ролями
+        </a>
+      </div>
+    </div>
   {% endif %}
 {% endblock %}

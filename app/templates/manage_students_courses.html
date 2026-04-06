@@ -3,95 +3,100 @@
 {% block title %}Распределение студентов{% endblock %}
 
 {% block content %}
-<h1>Распределение студентов</h1>
+<style>
+  .nav-btn { text-decoration: none; border: 1px solid #0000EE; padding: 5px 12px;
+    border-radius: 4px; font-size: 13px; color: #0000EE; }
+  .nav-btn:hover { background: #f0f0f0; }
+  .page-nav-bottom { margin-top: 30px; padding: 12px 0; border-top: 1px solid #ccc;
+    display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  .page-nav-bottom a { text-decoration: none; border: 1px solid #0000EE; padding: 5px 14px;
+    border-radius: 4px; color: #0000EE; font-size: 13px; }
+  .page-nav-bottom a:hover { background: #f0f4ff; }
+  .page-nav-bottom a.danger { border-color: red; color: red; }
+  .page-nav-bottom a.danger:hover { background: #fff0f0; }
+</style>
+
+<div style="display: flex; justify-content: space-between; align-items: center;">
+  <h1>Распределение студентов</h1>
+  <a href="{{ url_for('dashboard') }}" class="nav-btn">← Главная</a>
+</div>
+<hr>
 
 <h2>Студенты ({{ students|length }} найдено)</h2>
 {% if students %}
-<table border="1" cellpadding="5">
-    <thead>
-        <tr>
-            <th>ID</th>
-            <th>ФИО</th>
-        </tr>
-    </thead>
-    <tbody>
-        {% for student in students %}
-        <tr>
-            <td>{{ student.id }}</td>
-            <td>{{ student.fio }}</td>
-        </tr>
-        {% endfor %}
-    </tbody>
+<table>
+  <thead><tr><th>ID</th><th>ФИО</th></tr></thead>
+  <tbody>
+    {% for student in students %}
+    <tr><td>{{ student.id }}</td><td>{{ student.fio }}</td></tr>
+    {% endfor %}
+  </tbody>
 </table>
 {% else %}
-<p style="color: red;">Студенты не найдены. Проверьте базу данных.</p>
+<p style="color:red;">Студенты не найдены.</p>
 {% endif %}
 
 <h2>Дисциплины</h2>
-<table border="1" cellpadding="5">
-    <thead>
-        <tr>
-            <th>ID</th>
-            <th>Название</th>
-        </tr>
-    </thead>
-    <tbody>
-        {% for course in courses %}
-        <tr>
-            <td>{{ course.id }}</td>
-            <td>{{ course.name }}</td>
-        </tr>
-        {% endfor %}
-    </tbody>
+<table>
+  <thead><tr><th>ID</th><th>Название</th></tr></thead>
+  <tbody>
+    {% for course in courses %}
+    <tr><td>{{ course.id }}</td><td>{{ course.name }}</td></tr>
+    {% endfor %}
+  </tbody>
 </table>
 
-<h2>Назначить или удалить студента с дисциплины</h2>
-<form method="POST" action="{{ url_for('manage_students_courses') }}">
-    <label for="student">Студент:</label>
-    <select name="student" id="student" required>
-        <option value="">Выберите студента</option>
+<h2>Назначить / удалить студента с дисциплины</h2>
+<form method="POST" action="{{ url_for('manage_students_courses') }}"
+      style="display:flex; flex-wrap:wrap; gap:12px; align-items:flex-end;">
+  <div>
+    <label>Студент:<br>
+      <select name="student" required style="min-width:200px;">
+        <option value="">— выберите —</option>
         {% for student in students %}
         <option value="{{ student.id }}">{{ student.fio }}</option>
         {% endfor %}
-    </select><br><br>
-
-    <label for="course">Дисциплина:</label>
-    <select name="course" id="course" required>
-        <option value="">Выберите дисциплину</option>
+      </select>
+    </label>
+  </div>
+  <div>
+    <label>Дисциплина:<br>
+      <select name="course" required style="min-width:200px;">
+        <option value="">— выберите —</option>
         {% for course in courses %}
         <option value="{{ course.id }}">{{ course.name }}</option>
         {% endfor %}
-    </select><br><br>
-
-    <button type="submit" name="action" value="assign">Назначить</button>
-    <button type="submit" name="action" value="remove" onclick="return confirm('Удалить студента с дисциплины?')">Удалить</button>
+      </select>
+    </label>
+  </div>
+  <div style="display:flex; gap:8px;">
+    <button type="submit" name="action" value="assign" class="nav-btn"
+            style="cursor:pointer; background:white;">Назначить</button>
+    <button type="submit" name="action" value="remove" class="nav-btn"
+            style="cursor:pointer; background:white; border-color:red; color:red;"
+            onclick="return confirm('Удалить студента с дисциплины?')">Удалить</button>
+  </div>
 </form>
 
-<h2>Записанные студенты и их дисциплины</h2>
+<h2>Записанные студенты</h2>
 {% if assigned %}
-<table border="1" cellpadding="5">
-    <thead>
-        <tr>
-            <th>ФИО студента</th>
-            <th>Выбранная дисциплина</th>
-        </tr>
-    </thead>
-    <tbody>
-        {% for s in assigned %}
-        <tr>
-            <td>{{ s.fio }}</td>
-            <td>{{ s.course_name }}</td>
-        </tr>
-        {% endfor %}
-    </tbody>
+<table>
+  <thead><tr><th>ФИО студента</th><th>Дисциплина</th></tr></thead>
+  <tbody>
+    {% for s in assigned %}
+    <tr><td>{{ s.fio }}</td><td>{{ s.course_name }}</td></tr>
+    {% endfor %}
+  </tbody>
 </table>
 {% else %}
 <p>Нет записанных студентов.</p>
 {% endif %}
 
-<br>
-<a href="{{ url_for('reports_bp.generate_reports') }}">Сгенерировать отчет</a>
-<a href="{{ url_for('director_dashboard') }}">Панель управления</a><br>
-<a href="{{ url_for('manage_courses_bp.manage_courses') }}">Управление дисциплинами</a><br>
-<a href="{{ url_for('logout') }}">Выйти</a>
+<div class="page-nav-bottom">
+  <a href="{{ url_for('director_dashboard') }}">Панель дирекции</a>
+  <a href="{{ url_for('manage_courses_bp.manage_courses') }}">Управление дисциплинами</a>
+  <a href="{{ url_for('reports_bp.generate_reports') }}">Отчёты</a>
+  <a href="{{ url_for('dashboard') }}">Главная</a>
+  <a href="{{ url_for('logout') }}" class="danger">Выйти</a>
+</div>
 {% endblock %}
