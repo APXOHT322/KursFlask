@@ -38,7 +38,7 @@ def create_app():
     except Exception:
         pass
 
-    AVAILABLE_ROLES = ['Студент', 'Преподаватель', 'Специалист дирекции']
+    AVAILABLE_ROLES = ['Студент', 'Преподаватель', 'Специалист дирекции', 'Администратор']
 
     # ── Декоратор проверки ролей ──────────────────────────────────────────────
     def roles_required(*role_names):
@@ -51,6 +51,9 @@ def create_app():
                 user = User.query.get(user_id)
                 if not user:
                     return redirect(url_for('login'))
+                # Администратор имеет доступ ко всему
+                if user.has_role('Администратор'):
+                    return f(*args, **kwargs)
                 if not any(user.has_role(r) for r in role_names):
                     abort(403)
                 return f(*args, **kwargs)
@@ -317,13 +320,13 @@ def create_app():
     # ── Управление ролями пользователей ──────────────────────────────────────
 
     @app.route('/admin/users')
-    @roles_required('Специалист дирекции')
+    @roles_required('Администратор')
     def admin_users():
         users = User.query.order_by(User.fio).all()
         return render_template('admin_users.html', users=users, available_roles=AVAILABLE_ROLES)
 
     @app.route('/admin/users/<int:uid>/set_role', methods=['POST'])
-    @roles_required('Специалист дирекции')
+    @roles_required('Администратор')
     def admin_set_role(uid):
         user           = User.query.get_or_404(uid)
         selected_roles = request.form.getlist('roles')
