@@ -1,0 +1,57 @@
+{% extends 'layout.html' %}
+
+{% block title %}Управление пользователями{% endblock %}
+
+{% block content %}
+<h1>Управление пользователями и ролями</h1>
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% if messages %}
+    {% for category, message in messages %}
+      <p style="color: {% if category == 'success' %}green{% else %}red{% endif %};">
+        {{ message }}
+      </p>
+    {% endfor %}
+  {% endif %}
+{% endwith %}
+
+<table>
+  <thead>
+    <tr>
+      <th>ФИО</th>
+      <th>Логин</th>
+      <th>Текущие роли</th>
+      <th>Группа</th>
+      <th>Год поступления</th>
+      <th>Изменить роли</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for u in users %}
+    <tr>
+      <td>{{ u.fio }}</td>
+      <td>{{ u.login }}</td>
+      <td>{{ u.role or '—' }}</td>
+      <td>{{ u.group_number or '—' }}</td>
+      <td>{{ u.admission_year or '—' }}</td>
+      <td>
+        <form method="POST" action="{{ url_for('admin_set_role', uid=u.id) }}"
+              style="display: flex; flex-wrap: wrap; gap: 6px; align-items: center;">
+          {% for role in available_roles %}
+            <label style="font-weight: normal; white-space: nowrap;">
+              <input type="checkbox" name="roles" value="{{ role }}"
+                {% if u.has_role(role) %}checked{% endif %}>
+              {{ role }}
+            </label>
+          {% endfor %}
+          <button type="submit" style="margin-left: 8px;">Сохранить</button>
+        </form>
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+<br>
+<a href="{{ url_for('dashboard') }}">← Назад на главную</a>
+{% endblock %}

@@ -31,10 +31,17 @@
     </section>
   {% endif %}
 
-  {% if user.has_role('Специалист дирекции') %}
+  {% if user.has_role('Специалист дирекции') or user.has_role('Администратор') %}
     <section>
       <h2>Панель дирекции</h2>
       <a href="{{ url_for('director_dashboard') }}">Дирекция</a>
+    </section>
+  {% endif %}
+
+  {% if user.has_role('Администратор') %}
+    <section>
+      <h2>Администрирование</h2>
+      <a href="{{ url_for('admin_users') }}" style="color: darkred;">Управление пользователями и ролями</a>
     </section>
   {% endif %}
 {% endblock %}
