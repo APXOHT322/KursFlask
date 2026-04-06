@@ -101,11 +101,4 @@
         <p>Нет загруженных дисциплин. Нажмите "Обновить учебные планы", чтобы увидеть дисциплины по выбору.</p>
     </div>
 {% endif %}
-
-<div class="navigation-links" style="margin-top: 20px;">
-    <a href="{{ url_for('manage_students_courses') }}" style="text-decoration: underline; margin-right: 15px;">Распределение студентов</a>
-    <a href="{{ url_for('reports_bp.generate_reports') }}" style="text-decoration: underline; margin-right: 15px;">Сгенерировать отчет</a>
-    <a href="{{ url_for('director_dashboard') }}" style="text-decoration: underline; margin-right: 15px;">Панель управления</a>
-    <a href="{{ url_for('logout') }}" style="text-decoration: underline;">Выйти</a>
-</div>
 {% endblock %}

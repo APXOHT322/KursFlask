@@ -94,11 +94,4 @@
 {% else %}
 <p>Нет записанных студентов.</p>
 {% endif %}
-
-<div class="navigation-links" style="margin-top: 20px;">
-    <a href="{{ url_for('reports_bp.generate_reports') }}" style="text-decoration: underline; margin-right: 15px;">Сгенерировать отчёт</a>
-    <a href="{{ url_for('director_dashboard') }}" style="text-decoration: underline; margin-right: 15px;">Панель управления</a>
-    <a href="{{ url_for('manage_courses_bp.manage_courses') }}" style="text-decoration: underline; margin-right: 15px;">Управление дисциплинами</a>
-    <a href="{{ url_for('logout') }}" style="text-decoration: underline;">Выйти</a>
-</div>
 {% endblock %}
