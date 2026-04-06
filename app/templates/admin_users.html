@@ -3,7 +3,13 @@
 {% block title %}Управление пользователями{% endblock %}
 
 {% block content %}
-<h1>Управление пользователями и ролями</h1>
+<div style="display: flex; justify-content: space-between; align-items: center;">
+    <h1>Управление пользователями и ролями</h1>
+    <a href="{{ url_for('dashboard') }}"
+       style="text-decoration: none; border: 1px solid #0000EE; padding: 5px 10px; border-radius: 5px;">
+        ← На главную
+    </a>
+</div>
 
 {% with messages = get_flashed_messages(with_categories=true) %}
   {% if messages %}

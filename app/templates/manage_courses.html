@@ -3,7 +3,13 @@
 {% block title %}Управление дисциплинами{% endblock %}
 
 {% block content %}
-<h1>Управление дисциплинами</h1>
+<div style="display: flex; justify-content: space-between; align-items: center;">
+    <h1>Управление дисциплинами</h1>
+    <a href="{{ url_for('dashboard') }}"
+       style="text-decoration: none; border: 1px solid #0000EE; padding: 5px 10px; border-radius: 5px;">
+        ← На главную
+    </a>
+</div>
 <p>Добро пожаловать, {{ user.fio }}!</p>
 
 {% with messages = get_flashed_messages(with_categories=true) %}
@@ -32,16 +38,12 @@
     </div>
   
     <div class="right-button">
-    
-
-    <!-- 🔥 НОВАЯ кнопка -->
-    <form method="POST" action="{{ url_for('manage_courses_bp.update_plans') }}">
-      <button type="submit" class="btn btn-warning mt-2">
-        Обновить учебные планы
-      </button>
-    </form>
-
-  </div>
+      <form method="POST" action="{{ url_for('manage_courses_bp.update_plans') }}">
+        <button type="submit" class="btn btn-warning mt-2">
+          Обновить учебные планы
+        </button>
+      </form>
+    </div>
 </div>
 
 <div class="filter-section">
@@ -61,8 +63,6 @@
 </div>
 
 {% if elective_courses %}
-    {# Убрал кнопку удаления всех дисциплин #}
-    
     {# Группируем дисциплины по направлению и году #}
     {% set grouped_courses = {} %}
     {% for course in elective_courses %}
@@ -109,4 +109,3 @@
     <a href="{{ url_for('logout') }}" class="btn btn-link">Выйти</a>
 </div>
 {% endblock %}
-

@@ -1,8 +1,14 @@
 {% extends 'layout.html' %}
 
 {% block content %}
-  <h1>Сформировать отчет</h1>
-  <form method="POST" action="{{ url_for('reports_bp.generate_reports') }}">
+<div style="display: flex; justify-content: space-between; align-items: center;">
+    <h1>Сформировать отчет</h1>
+    <a href="{{ url_for('dashboard') }}"
+       style="text-decoration: none; border: 1px solid #0000EE; padding: 5px 10px; border-radius: 5px;">
+        ← На главную
+    </a>
+</div>
+<form method="POST" action="{{ url_for('reports_bp.generate_reports') }}">
     <button type="submit">Сформировать отчет</button>
-  </form>
+</form>
 {% endblock %}

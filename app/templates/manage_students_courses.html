@@ -3,7 +3,13 @@
 {% block title %}Распределение студентов{% endblock %}
 
 {% block content %}
-<h1>Распределение студентов</h1>
+<div style="display: flex; justify-content: space-between; align-items: center;">
+    <h1>Распределение студентов</h1>
+    <a href="{{ url_for('dashboard') }}"
+       style="text-decoration: none; border: 1px solid #0000EE; padding: 5px 10px; border-radius: 5px;">
+        ← На главную
+    </a>
+</div>
 
 <h2>Студенты ({{ students|length }} найдено)</h2>
 {% if students %}

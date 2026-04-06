@@ -3,12 +3,19 @@
 {% block content %}
     <div class="container">
         <div style="display: flex; justify-content: space-between; align-items: center;">
-            <h2 class="page-title">Доступные дисциплины по выбору</h2>
-            <a href="http://localhost:3000/" 
+            <div>
+                <a href="http://localhost:3000/" 
+                   style="text-decoration: none; border: 1px solid #0000EE; padding: 5px 10px; border-radius: 5px;">
+                    ← Система Курс
+                </a>
+            </div>
+            <a href="{{ url_for('dashboard') }}"
                style="text-decoration: none; border: 1px solid #0000EE; padding: 5px 10px; border-radius: 5px;">
-                ← Система Курс
+                ← На главную
             </a>
         </div>
+
+        <h2 class="page-title">Доступные дисциплины по выбору</h2>
 
         <div class="user-info">
             <p><strong>ФИО:</strong> {{ user.fio }}</p>

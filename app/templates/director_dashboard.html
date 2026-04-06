@@ -3,18 +3,22 @@
 {% block title %}Панель управления специалиста дирекции{% endblock %}
 
 {% block content %}
-    <div class="dashboard-container">
+    <div style="display: flex; justify-content: space-between; align-items: center;">
         <h1>Панель управления специалиста дирекции</h1>
-        <p>Добро пожаловать, {{ user.fio }}!</p>
+        <a href="{{ url_for('dashboard') }}"
+           style="text-decoration: none; border: 1px solid #0000EE; padding: 5px 10px; border-radius: 5px;">
+            ← На главную
+        </a>
+    </div>
+    <p>Добро пожаловать, {{ user.fio }}!</p>
 
-        <div class="dashboard-links">
-            <a href="{{ url_for('manage_courses_bp.manage_courses') }}">Управление дисциплинами</a>
-            <a href="{{ url_for('manage_students_courses') }}">Распределение студентов</a>
-            <a href="{{ url_for('reports_bp.generate_reports') }}">Сгенерировать отчет</a>
-        </div>
+    <div class="dashboard-links">
+        <a href="{{ url_for('manage_courses_bp.manage_courses') }}">Управление дисциплинами</a>
+        <a href="{{ url_for('manage_students_courses') }}">Распределение студентов</a>
+        <a href="{{ url_for('reports_bp.generate_reports') }}">Сгенерировать отчет</a>
+    </div>
 
-        <div class="logout-section">
-            <a href="{{ url_for('logout') }}">Выйти</a>
-        </div>
+    <div class="logout-section">
+        <a href="{{ url_for('logout') }}">Выйти</a>
     </div>
 {% endblock %}
