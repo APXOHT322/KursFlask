@@ -10,7 +10,7 @@ services:
     extra_hosts:
       - "host.docker.internal:host-gateway"
     environment:
-      DATABASE_URL: mysql+pymysql://root:OoRa2Oob@host.docker.internal/Kurs
+      DATABASE_URL: mysql+pymysql://kursuser:OoRa2Oob@host.docker.internal/Kurs
       SECRET_KEY: your_secret_key
 
   clojure:
