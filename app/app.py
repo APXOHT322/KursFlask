@@ -247,6 +247,9 @@ def create_app():
 
     # ── SSO: переход из Flask обратно в Clojure ───────────────────────────────
 
+    # URL берётся из переменной окружения — работает и без Docker и с ним
+    CLOJURE_URL = os.environ.get('CLOJURE_URL', 'http://kurs2.ybgv.cs.prv:3000')
+
     @app.route('/goto/kurs')
     def goto_kurs():
         """
@@ -255,11 +258,11 @@ def create_app():
         """
         user_id = session.get('user_id')
         if not user_id:
-            return redirect('http://localhost:3000/')
+            return redirect(CLOJURE_URL + '/')
 
         user = User.query.get(user_id)
         if not user:
-            return redirect('http://localhost:3000/')
+            return redirect(CLOJURE_URL + '/')
 
         import secrets
         from datetime import timedelta
@@ -273,7 +276,7 @@ def create_app():
         )
         db.session.commit()
 
-        return redirect(f'http://localhost:3000/sso?token={token}')
+        return redirect(f'{CLOJURE_URL}/sso?token={token}')
 
     # ── Управление студентами (специалист дирекции) ───────────────────────────
 
