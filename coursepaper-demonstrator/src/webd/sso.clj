@@ -11,7 +11,8 @@
   {:connection-uri "jdbc:mariadb://localhost:3306/Kurs?user=root&password=OoRa2Oob"})
 
 ;; ── URL приложений ────────────────────────────────────────────────────────────
-(def ^:private flask-base-url "http://localhost:5000")
+(def ^:private flask-base-url
+  (or (System/getenv "FLASK_URL") "http://kurs2.ybgv.cs.prv:5000"))
 
 ;; ── Генерация токена (Clojure → Flask) ───────────────────────────────────────
 
