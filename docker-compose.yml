@@ -22,3 +22,4 @@ services:
       - "host.docker.internal:host-gateway"
     environment:
       FLASK_URL: http://kurs2.ybgv.cs.prv:5000
+      DB_HOST: host.docker.internal
