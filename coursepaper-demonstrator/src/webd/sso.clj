@@ -7,8 +7,11 @@
            [java.time LocalDateTime]))
 
 ;; ── Конфигурация БД через прямой JDBC URL ────────────────────────────────────
+(def ^:private db-host
+  (or (System/getenv "DB_HOST") "host.docker.internal"))
+
 (def ^:private db-spec
-  {:connection-uri "jdbc:mariadb://localhost:3306/Kurs?user=root&password=OoRa2Oob"})
+  {:connection-uri (str "jdbc:mariadb://" db-host ":3306/Kurs?user=root&password=OoRa2Oob")})
 
 ;; ── URL приложений ────────────────────────────────────────────────────────────
 (def ^:private flask-base-url
