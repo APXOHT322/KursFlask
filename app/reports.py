@@ -6,6 +6,7 @@ from reportlab.pdfgen import canvas
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 from reportlab import rl_config
+import os
 
 reports_bp = Blueprint('reports_bp', __name__)
 
@@ -18,7 +19,7 @@ def generate_reports():
 
         # Регистрация шрифта, поддерживающего кириллицу
         rl_config.warnOnMissingFont = 0
-        pdfmetrics.registerFont(TTFont('FreeTTF', r'D:\Downloads\Telegram Desktop\KursFlask-main\KursFlask-main\fonts\DejaVuSans.ttf'))
+        pdfmetrics.registerFont(TTFont('FreeTTF', os.path.join(os.path.dirname(os.path.abspath(__file__)), 'fonts', 'DejaVuSans.ttf')))
         c.setFont("FreeTTF", 12)
 
         c.drawString(100, height - 40, "Отчет по дисциплинам и студентам")
