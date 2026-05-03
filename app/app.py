@@ -248,7 +248,7 @@ def create_app():
     # ── SSO: переход из Flask обратно в Clojure ───────────────────────────────
 
     # URL берётся из переменной окружения — работает и без Docker и с ним
-    CLOJURE_URL = os.environ.get('CLOJURE_URL', 'http://kurs2.ybgv.cs.prv:3000')
+    CLOJURE_URL = os.environ.get('CLOJURE_URL', 'https://kurs2.cs.petrsu.ru')
 
     @app.route('/goto/kurs')
     def goto_kurs():
