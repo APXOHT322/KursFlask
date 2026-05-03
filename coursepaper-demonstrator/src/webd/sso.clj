@@ -15,7 +15,7 @@
 
 ;; ── URL приложений ────────────────────────────────────────────────────────────
 (def ^:private flask-base-url
-  (or (System/getenv "FLASK_URL") "http://kurs2.ybgv.cs.prv:5000"))
+  (or (System/getenv "FLASK_URL") "https://kurs3.cs.petrsu.ru"))
 
 ;; ── Генерация токена (Clojure → Flask) ───────────────────────────────────────
 
